@@ -296,8 +296,8 @@ body {
 
 /* --- v4 Feature Button Styles -------------------------------------------- */
 .v4-feature-btn {
-  border-color: #E3F2FD;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);
+  border-color: #e5e7eb;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
   position: relative;
 }
 
@@ -306,7 +306,7 @@ body {
   position: absolute;
   top: -6px;
   right: -4px;
-  background: #2196F3;
+  background: #374151;
   color: white;
   font-size: 8px;
   font-weight: 700;
@@ -316,13 +316,13 @@ body {
 }
 
 .v4-feature-btn:hover {
-  background: linear-gradient(135deg, #f0f7ff 0%, #E3F2FD 100%);
-  border-color: #2196F3;
+  background: linear-gradient(135deg, #f8f8f8 0%, #f0f0f0 100%);
+  border-color: #6b7280;
 }
 
 .panel-toggle.active-panel {
-  background: #E3F2FD;
-  border-color: #2196F3;
-  color: #1565C0;
+  background: #f3f4f6;
+  border-color: #6b7280;
+  color: #374151;
   font-weight: 600;
 }
