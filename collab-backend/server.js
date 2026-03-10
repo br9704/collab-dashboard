@@ -333,6 +333,13 @@ io.on('connection', (socket) => {
 
     console.log(`[SESSION-CREATE] User ${userId} created ${session.id}`);
     
+    // Emit user-joined to notify all clients (including creator) of their role
+    io.to(session.id).emit('user-joined', {
+      userId,
+      users: Array.from(session.users),
+      sessionState: session.toJSON()
+    });
+    
     // Sprint 10-11: Start auto-save interval (every 10 seconds)
     const autoSaveInterval = setInterval(() => {
       const sess = getSession(currentSessionId);
