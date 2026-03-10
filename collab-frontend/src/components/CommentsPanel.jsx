@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import './CommentsPanel.css';
 
 export default function CommentsPanel({ socket, strokeId, comments, currentUserId }) {

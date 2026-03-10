@@ -34,19 +34,29 @@ body {
   padding: 12px;
   text-align: center;
   background: #1e1e1e;
-  border-bottom: 1px solid #7c3aed;
+  border-bottom: 1px solid rgba(124, 58, 237, 0.3);
   z-index: 100;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
 }
 
 .connection-banner.disconnected {
-  background: #d4191a;
+  background: #c41e3a;
   color: #fff;
+  border-bottom-color: rgba(196, 30, 58, 0.3);
+  animation: pulse-error 2s ease-in-out infinite;
 }
 
 .connection-banner.error {
-  background: #d4191a;
+  background: #c41e3a;
   color: #fff;
+  border-bottom-color: rgba(196, 30, 58, 0.3);
+}
+
+@keyframes pulse-error {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.9; }
 }
 
 /* Camera info display (Sprint 13-14) */
@@ -56,12 +66,15 @@ body {
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.8);
-  border: 1px solid #7c3aed;
+  border: 1px solid rgba(124, 58, 237, 0.3);
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 11px;
-  color: #7c3aed;
+  color: #a78bfa;
   z-index: 50;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  backdrop-filter: blur(4px);
 }
 
 /* Panel toggles */
@@ -70,22 +83,28 @@ body {
   bottom: 280px;
   right: 20px;
   padding: 10px 16px;
+  min-height: 40px;
   background: #7c3aed;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
-  transition: background 0.2s;
+  font-weight: 500;
+  transition: all 0.2s;
   z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .panel-toggle:hover {
-  background: #9333ea;
+  background: #6d28d9;
+  box-shadow: 0 4px 12px rgba(123, 58, 237, 0.3);
 }
 
 .panel-toggle.activity-toggle {
-  bottom: 240px;
+  bottom: 220px;
 }
 
 /* Session info */
@@ -93,32 +112,37 @@ body {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background: rgba(0, 0, 0, 0.95);
-  border: 1px solid #7c3aed;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(124, 58, 237, 0.3);
   padding: 12px 16px;
   border-radius: 8px;
   font-size: 11px;
-  color: #aaa;
+  color: #888;
   z-index: 999;
+  backdrop-filter: blur(4px);
+  font-weight: 500;
 }
 
 .session-info code {
   color: #7c3aed;
-  background: rgba(124, 58, 237, 0.2);
+  background: rgba(124, 58, 237, 0.15);
   padding: 2px 6px;
-  border-radius: 2px;
+  border-radius: 3px;
   font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 10px;
 }
 
 .role-badge {
   display: inline-block;
   margin-top: 6px;
-  padding: 4px 8px;
-  border-radius: 3px;
+  padding: 6px 10px;
+  border-radius: 4px;
   font-size: 10px;
-  font-weight: 500;
-  background: rgba(124, 58, 237, 0.3);
-  color: #7c3aed;
+  font-weight: 600;
+  background: rgba(124, 58, 237, 0.15);
+  color: #a78bfa;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 /* Exit button */
@@ -127,18 +151,25 @@ body {
   top: 20px;
   left: 20px;
   padding: 10px 20px;
-  background: #d4191a;
+  min-height: 40px;
+  background: #c41e3a;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
-  transition: background 0.2s;
+  font-weight: 600;
+  transition: all 0.2s;
   z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.3px;
 }
 
 .exit-button:hover {
-  background: #ff4444;
+  background: #d4191a;
+  box-shadow: 0 4px 12px rgba(196, 30, 58, 0.3);
 }
 
 /* Session Manager Container */

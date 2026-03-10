@@ -8,15 +8,16 @@
 }
 
 .canvas-toolbar {
-  background: rgba(0, 0, 0, 0.8);
-  border-bottom: 1px solid #7c3aed;
+  background: rgba(0, 0, 0, 0.7);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.3);
   padding: 12px 20px;
   display: flex;
-  gap: 20px;
+  gap: 12px;
   align-items: center;
   flex-wrap: wrap;
-  height: 70px;
+  min-height: 56px;
   overflow-y: auto;
+  backdrop-filter: blur(4px);
 }
 
 .tool-group {
@@ -29,105 +30,114 @@
   width: 40px;
   height: 40px;
   padding: 0;
-  background: #333;
-  border: 2px solid transparent;
-  border-radius: 4px;
+  background: rgba(51, 51, 51, 0.7);
+  border: 1.5px solid transparent;
+  border-radius: 6px;
   color: white;
   cursor: pointer;
   font-size: 18px;
-  transition: all 0.2s;
+  transition: all 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .tool-button:hover:not(:disabled) {
-  background: #7c3aed;
+  background: rgba(124, 58, 237, 0.3);
   border-color: #7c3aed;
 }
 
 .tool-button.active {
   background: #7c3aed;
-  border-color: #fff;
-  box-shadow: 0 0 8px rgba(124, 58, 237, 0.8);
+  border-color: #7c3aed;
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.5);
 }
 
 .tool-button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .color-picker {
   width: 40px;
   height: 40px;
-  border: 2px solid #7c3aed;
-  border-radius: 4px;
+  border: 1.5px solid rgba(124, 58, 237, 0.5);
+  border-radius: 6px;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .color-picker:hover:not(:disabled) {
-  border-color: #fff;
+  border-color: #7c3aed;
+  box-shadow: 0 0 8px rgba(124, 58, 237, 0.3);
 }
 
 .color-picker:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .width-slider {
   width: 100px;
-  height: 6px;
+  height: 5px;
   margin: 0 8px;
+  cursor: pointer;
 }
 
 label {
   display: flex;
   align-items: center;
-  color: white;
+  color: #aaa;
   font-size: 12px;
   gap: 8px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }
 
 .width-value {
   color: #7c3aed;
-  font-weight: 500;
-  min-width: 35px;
+  font-weight: 600;
+  min-width: 30px;
+  font-size: 13px;
 }
 
 .zoom-info {
   color: #7c3aed;
-  font-size: 12px;
-  background: rgba(124, 58, 237, 0.2);
-  padding: 4px 8px;
-  border-radius: 3px;
-  border: 1px solid #7c3aed;
+  font-size: 11px;
+  background: rgba(124, 58, 237, 0.15);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  font-weight: 500;
+  letter-spacing: 0.2px;
 }
 
 .role-indicator {
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 3px;
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 4px;
   border: 1px solid;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
 .role-indicator.role-admin {
-  background: rgba(255, 107, 107, 0.2);
-  color: #ff6b6b;
-  border-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff8888;
+  border-color: rgba(255, 107, 107, 0.4);
 }
 
 .role-indicator.role-editor {
-  background: rgba(124, 58, 237, 0.2);
-  color: #7c3aed;
-  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.15);
+  color: #a78bfa;
+  border-color: rgba(124, 58, 237, 0.4);
 }
 
 .role-indicator.role-viewer {
-  background: rgba(136, 136, 136, 0.2);
-  color: #888;
-  border-color: #888;
+  background: rgba(136, 136, 136, 0.15);
+  color: #aaa;
+  border-color: rgba(136, 136, 136, 0.4);
 }
 
 .drawing-canvas {
@@ -139,8 +149,8 @@ label {
 
 .view-only-overlay {
   position: absolute;
-  inset: 70px 0 0 0;
-  background: rgba(0, 0, 0, 0.4);
+  inset: 56px 0 0 0;
+  background: rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -149,12 +159,14 @@ label {
 }
 
 .overlay-message {
-  background: rgba(0, 0, 0, 0.9);
-  color: #888;
-  padding: 20px 40px;
+  background: rgba(0, 0, 0, 0.95);
+  color: #aaa;
+  padding: 24px 40px;
   border-radius: 8px;
-  font-size: 16px;
-  border: 2px solid #888;
+  font-size: 14px;
+  border: 1px solid rgba(136, 136, 136, 0.2);
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }
 
 /* Responsive design */

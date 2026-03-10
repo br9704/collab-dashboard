@@ -10,35 +10,41 @@
 
 .presence-halo {
   position: fixed;
-  border: 2px dashed;
-  border-radius: 4px;
+  border: 1.5px solid;
+  border-radius: 6px;
   pointer-events: none;
-  transition: opacity 0.3s ease, border-color 0.3s ease;
-  box-shadow: 0 0 12px currentColor;
+  transition: opacity 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
 }
 
 .presence-halo.drawing {
   border-style: solid;
-  border-width: 2px;
+  border-width: 1.5px;
+  box-shadow: 0 0 12px currentColor;
+  opacity: 0.7;
 }
 
 .presence-halo.idle {
-  opacity: 0.2;
+  opacity: 0.25;
+  border-style: dashed;
+  border-width: 1px;
 }
 
 .drawing-indicator {
   position: absolute;
-  top: -12px;
-  right: -12px;
-  font-size: 14px;
-  animation: pulse 0.5s infinite;
+  top: -14px;
+  right: -14px;
+  font-size: 12px;
+  animation: subtle-pulse 1s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes subtle-pulse {
   0%, 100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.4;
+    opacity: 0.6;
+    transform: scale(1.1);
   }
 }

@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './CursorPresence.css';
 
 export default function CursorPresence({ socket, cursors, users, currentUserId }) {
   const animationFrameRef = useRef({});
   const [displayCursors, setDisplayCursors] = useState({});
+
+  // Define easing function before useEffect
+  const easeOutQuad = (t) => t * (2 - t);
 
   useEffect(() => {
     if (!socket) return;
@@ -45,9 +48,7 @@ export default function CursorPresence({ socket, cursors, users, currentUserId }
     });
 
     return () => socket.off('cursor-update');
-  }, [socket, displayCursors]);
-
-  const easeOutQuad = (t) => t * (2 - t);
+  }, [socket, displayCursors, easeOutQuad]);
 
   const getColor = (index) => {
     const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffa502', '#a8e6cf'];
