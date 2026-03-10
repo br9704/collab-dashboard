@@ -1,0 +1,10 @@
+.cursor {
+  position: fixed;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.8;
+  z-index: 99;
+  transition: all 0.05s ease-out;
+}
