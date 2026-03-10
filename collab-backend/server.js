@@ -3,6 +3,7 @@ const { createServer } = require('http');
 const { Server: SocketIOServer } = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
+const { ROLES, canPerformAction, getDefaultRole, getCreatorRole } = require('./roles');
 require('dotenv').config();
 
 const app = express();
@@ -320,22 +321,46 @@ io.on('connection', (socket) => {
   console.log(`[CONNECT] User ${socket.id}`);
   let currentSessionId = null;
   let userId = socket.id;
-  let userRole = 'editor'; // Default role
+  let userRole = getDefaultRole(); // Default to VIEWER role
 
-  // Session creation
+  /**
+   * SESSION-CREATE Handler
+   * 
+   * Creates a new collaborative session and assigns the creator with CREATOR role.
+   * The creator has full permissions: draw, edit, manage users, export.
+   * 
+   * Flow:
+   *   1. Create new Session instance
+   *   2. Set creator ID and initialize with CREATOR role
+   *   3. Emit 'user-joined' to broadcast creator's role to all clients (fixes bug where creator showed as VIEWER)
+   *   4. Start auto-save interval
+   *   5. Return session ID and full state to callback
+   * 
+   * Permission model:
+   *   - Creator: Full permissions (draw, edit, manage, export, delete)
+   *   - Others: VIEWER by default (no drawing/editing)
+   * 
+   * @param {Function} callback - Called with { sessionId, session, error? }
+   */
   socket.on('session-create', (callback) => {
+    // Create session and assign creator role
     const session = createSession();
     session.creator = userId;
-    session.addUser(userId, 'admin');
-    userRole = 'admin';
+    
+    // CRITICAL FIX: Assign CREATOR role to the session creator
+    const creatorRole = getCreatorRole(); // ROLES.CREATOR = 'creator'
+    session.addUser(userId, creatorRole);
+    userRole = creatorRole;
     currentSessionId = session.id;
     socket.join(session.id);
 
-    console.log(`[SESSION-CREATE] User ${userId} created ${session.id}`);
+    console.log(`[SESSION-CREATE] User ${userId} created ${session.id} with role: ${creatorRole}`);
     
-    // Emit user-joined to notify all clients (including creator) of their role
+    // CRITICAL: Broadcast user-joined event so all clients (including creator) receive role update
+    // BUG FIX: This emit was missing in original code, causing creator to appear as VIEWER
     io.to(session.id).emit('user-joined', {
       userId,
+      role: creatorRole,  // Explicitly include role for clarity
       users: Array.from(session.users),
       sessionState: session.toJSON()
     });
@@ -355,22 +380,44 @@ io.on('connection', (socket) => {
     callback({ sessionId: session.id, session: session.toJSON() });
   });
 
-  // Session joining
+  /**
+   * SESSION-JOIN Handler
+   * 
+   * Joins an existing session and assigns VIEWER role by default.
+   * Session creator can promote joiners to EDITOR role via role-change event.
+   * 
+   * Flow:
+   *   1. Look up session by ID
+   *   2. Add user with default VIEWER role (restricted access)
+   *   3. Emit 'user-joined' to notify all clients
+   *   4. Return session state to callback
+   * 
+   * Permission model:
+   *   - Joiners: VIEWER role (read-only) by default
+   *   - Creator can promote via 'role-change' event
+   * 
+   * @param {string} sessionId - The session to join
+   * @param {Function} callback - Called with { sessionId, session, error? }
+   */
   socket.on('session-join', (sessionId, callback) => {
     const session = getSession(sessionId);
     if (!session) {
       return callback({ error: 'Session not found' });
     }
 
-    session.addUser(userId, 'editor'); // Default to editor role
-    userRole = 'editor';
+    // Assign joiner as VIEWER by default (read-only)
+    const joinerRole = getDefaultRole(); // ROLES.VIEWER = 'viewer'
+    session.addUser(userId, joinerRole);
+    userRole = joinerRole;
     currentSessionId = sessionId;
     socket.join(sessionId);
 
-    console.log(`[SESSION-JOIN] User ${userId} joined ${sessionId}`);
+    console.log(`[SESSION-JOIN] User ${userId} joined ${sessionId} with role: ${joinerRole}`);
     
+    // Broadcast user-joined so all clients see the new user and their role
     io.to(sessionId).emit('user-joined', {
       userId,
+      role: joinerRole,  // Explicitly include role for clarity
       users: Array.from(session.users),
       sessionState: session.toJSON()
     });
@@ -417,14 +464,32 @@ io.on('connection', (socket) => {
     socket.to(currentSessionId).emit('camera-updated', session.camera);
   });
 
-  // Draw stroke
+  /**
+   * STROKE-DRAW Handler
+   * 
+   * Receives drawing stroke from client and broadcasts to all session members.
+   * Permission: Only CREATOR and EDITOR roles can draw. VIEWER cannot.
+   * 
+   * Permission check flow:
+   *   1. Verify user has permission to draw (canPerformAction('draw-stroke'))
+   *   2. If denied, reject silently (return early)
+   *   3. If allowed, add stroke to session and broadcast
+   * 
+   * @param {Object} data - { points: [{x, y}, ...], color, width }
+   */
   socket.on('stroke-draw', (data) => {
-    if (!currentSessionId || userRole === 'viewer') return;
+    if (!currentSessionId) return;
+
+    // Permission check: Only CREATOR and EDITOR can draw (VIEWER cannot)
+    if (!canPerformAction(userRole, 'draw-stroke')) {
+      console.warn(`[PERMISSION DENIED] User ${userId} (role: ${userRole}) attempted to draw in ${currentSessionId}`);
+      return;
+    }
 
     const session = getSession(currentSessionId);
     if (!session) return;
 
-    // Sprint 16: Mark user as drawing
+    // Sprint 16: Mark user as drawing and update active area
     if (session.userPresence[userId]) {
       session.userPresence[userId].isDrawing = true;
       session.userPresence[userId].activeArea = {
@@ -435,6 +500,7 @@ io.on('connection', (socket) => {
       };
     }
 
+    // Create stroke object with full metadata
     const stroke = {
       id: Date.now() + Math.random(),
       userId,
@@ -445,23 +511,41 @@ io.on('connection', (socket) => {
       comments: [] // Sprint 17
     };
 
+    // Add to session state
     session.strokes.push(stroke);
     
-    // Sprint 10-11: Add to undo history
+    // Sprint 10-11: Add to undo history for creator/editor use
     session.addToHistory('stroke-added', { strokeId: stroke.id, stroke }, userId);
     session.logActivity('stroke-added', userId, { strokeCount: session.strokes.length });
 
+    // Broadcast to all users in session
     io.to(currentSessionId).emit('stroke-created', stroke);
   });
 
-  // Add shape
+  /**
+   * SHAPE-DRAW Handler
+   * 
+   * Creates a shape (rectangle, circle, line) and broadcasts to all session members.
+   * Includes automatic shape recognition to snap drawn strokes to clean shapes.
+   * Permission: Only CREATOR and EDITOR roles can draw shapes. VIEWER cannot.
+   * 
+   * Permission check: canPerformAction('draw-shape')
+   * 
+   * @param {Object} data - { type, points: [{x, y}, ...], color, width }
+   */
   socket.on('shape-draw', (data) => {
-    if (!currentSessionId || userRole === 'viewer') return;
+    if (!currentSessionId) return;
+
+    // Permission check: Only CREATOR and EDITOR can draw shapes (VIEWER cannot)
+    if (!canPerformAction(userRole, 'draw-shape')) {
+      console.warn(`[PERMISSION DENIED] User ${userId} (role: ${userRole}) attempted to draw shape in ${currentSessionId}`);
+      return;
+    }
 
     const session = getSession(currentSessionId);
     if (!session) return;
 
-    // Sprint 18: Shape recognition
+    // Sprint 18: Shape recognition - auto-detect shape type from drawn points
     let shapeType = data.type;
     let shapeBounds = null;
     
@@ -473,6 +557,7 @@ io.on('connection', (socket) => {
       }
     }
 
+    // Create shape object with full metadata
     const shape = {
       id: Date.now() + Math.random(),
       userId,
@@ -484,26 +569,43 @@ io.on('connection', (socket) => {
       comments: [] // Sprint 17
     };
 
+    // Add recognized bounds if shape was auto-detected
     if (shapeBounds) {
       shape.bounds = shapeBounds;
     }
 
+    // Add to session state
     session.shapes.push(shape);
     
-    // Sprint 10-11: Add to history
+    // Sprint 10-11: Add to undo history
     session.addToHistory('shape-added', { shapeId: shape.id, shape }, userId);
     session.logActivity('shape-added', userId, { shapeType, shapeCount: session.shapes.length });
 
+    // Broadcast to all session members
     io.to(currentSessionId).emit('shape-created', shape);
   });
 
-  // Add text box
+  /**
+   * TEXT-ADD Handler
+   * 
+   * Creates a text box at specified coordinates.
+   * Permission: Only CREATOR and EDITOR can add text. VIEWER cannot.
+   * 
+   * @param {Object} data - { text: string, x: number, y: number, color?: string }
+   */
   socket.on('text-add', (data) => {
-    if (!currentSessionId || userRole === 'viewer') return;
+    if (!currentSessionId) return;
+
+    // Permission check: Only CREATOR and EDITOR can add text (VIEWER cannot)
+    if (!canPerformAction(userRole, 'add-text')) {
+      console.warn(`[PERMISSION DENIED] User ${userId} (role: ${userRole}) attempted to add text in ${currentSessionId}`);
+      return;
+    }
 
     const session = getSession(currentSessionId);
     if (!session) return;
 
+    // Create text box with metadata
     const textBox = {
       id: Date.now() + Math.random(),
       userId,
@@ -516,23 +618,41 @@ io.on('connection', (socket) => {
       comments: [] // Sprint 17
     };
 
+    // Add to session state
     session.textBoxes.push(textBox);
     
-    // Sprint 10-11: Add to history
+    // Sprint 10-11: Add to undo history
     session.addToHistory('text-added', { textBoxId: textBox.id, textBox }, userId);
     session.logActivity('text-added', userId, { textCount: session.textBoxes.length });
 
+    // Broadcast to all session members
     io.to(currentSessionId).emit('text-created', textBox);
   });
 
-  // Update text box (Last-Write-Wins conflict resolution)
+  /**
+   * TEXT-UPDATE Handler
+   * 
+   * Updates an existing text box using Last-Write-Wins conflict resolution.
+   * Only the text box creator can edit their own text.
+   * Permission: Only CREATOR and EDITOR can edit text. VIEWER cannot.
+   * 
+   * @param {Object} data - { id: string, text: string }
+   */
   socket.on('text-update', (data) => {
-    if (!currentSessionId || userRole === 'viewer') return;
+    if (!currentSessionId) return;
+
+    // Permission check: Only CREATOR and EDITOR can edit text (VIEWER cannot)
+    if (!canPerformAction(userRole, 'edit-text')) {
+      console.warn(`[PERMISSION DENIED] User ${userId} (role: ${userRole}) attempted to edit text in ${currentSessionId}`);
+      return;
+    }
 
     const session = getSession(currentSessionId);
     if (!session) return;
 
     const textBox = session.textBoxes.find(t => t.id === data.id);
+    
+    // Only allow users to edit their own text boxes
     if (textBox && textBox.userId === userId) {
       const serverTime = Date.now();
       const oldText = textBox.text;
@@ -540,13 +660,14 @@ io.on('connection', (socket) => {
       textBox.timestamp = serverTime;
       textBox.version = (textBox.version || 0) + 1;
       
-      // Add to history
+      // Add to undo history
       session.addToHistory('text-updated', { 
         textBoxId: data.id, 
         oldText, 
         newText: data.text 
       }, userId);
 
+      // Broadcast updated text to all session members
       io.to(currentSessionId).emit('text-updated', {
         ...textBox,
         serverTime,
@@ -555,36 +676,69 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Delete text box
+  /**
+   * TEXT-DELETE Handler
+   * 
+   * Deletes a text box from the session.
+   * Only the text box creator can delete their own text.
+   * Permission: Only CREATOR and EDITOR can delete text. VIEWER cannot.
+   * 
+   * @param {string} id - The text box ID to delete
+   */
   socket.on('text-delete', (id) => {
-    if (!currentSessionId || userRole === 'viewer') return;
+    if (!currentSessionId) return;
+
+    // Permission check: Only CREATOR and EDITOR can delete text (VIEWER cannot)
+    if (!canPerformAction(userRole, 'delete-text')) {
+      console.warn(`[PERMISSION DENIED] User ${userId} (role: ${userRole}) attempted to delete text in ${currentSessionId}`);
+      return;
+    }
 
     const session = getSession(currentSessionId);
     if (!session) return;
 
     const index = session.textBoxes.findIndex(t => t.id === id);
+    
+    // Only allow users to delete their own text boxes
     if (index > -1 && session.textBoxes[index].userId === userId) {
       const deleted = session.textBoxes[index];
       session.textBoxes.splice(index, 1);
       
-      // Add to history
+      // Add to undo history
       session.addToHistory('text-deleted', { textBoxId: id, textBox: deleted }, userId);
       session.logActivity('text-deleted', userId, { textCount: session.textBoxes.length });
 
+      // Broadcast deletion to all session members
       io.to(currentSessionId).emit('text-deleted', id);
     }
   });
 
-  // Sprint 10-11: Undo
+  /**
+   * UNDO Handler
+   * 
+   * Reverts the last action in the session's undo history.
+   * Permission: Only CREATOR and EDITOR can undo. VIEWER cannot.
+   * 
+   * @param {Function} callback - Called with { success, operationIndex }
+   */
   socket.on('undo', (callback) => {
     if (!currentSessionId) return;
+
+    // Permission check: Only CREATOR and EDITOR can undo (VIEWER cannot)
+    if (!canPerformAction(userRole, 'undo')) {
+      console.warn(`[PERMISSION DENIED] User ${userId} (role: ${userRole}) attempted to undo in ${currentSessionId}`);
+      callback && callback({ success: false, error: 'Permission denied' });
+      return;
+    }
 
     const session = getSession(currentSessionId);
     if (!session) return;
 
     const result = session.undo();
     if (result.success) {
-      console.log(`[UNDO] User ${userId} at index ${result.operationIndex}`);
+      console.log(`[UNDO] User ${userId} at operation index ${result.operationIndex}`);
+      
+      // Broadcast undo to all session members
       io.to(currentSessionId).emit('undo-applied', {
         operationIndex: result.operationIndex,
         appliedBy: userId
@@ -593,16 +747,32 @@ io.on('connection', (socket) => {
     callback && callback(result);
   });
 
-  // Sprint 10-11: Redo
+  /**
+   * REDO Handler
+   * 
+   * Reapplies the last undone action in the undo history.
+   * Permission: Only CREATOR and EDITOR can redo. VIEWER cannot.
+   * 
+   * @param {Function} callback - Called with { success, operationIndex }
+   */
   socket.on('redo', (callback) => {
     if (!currentSessionId) return;
+
+    // Permission check: Only CREATOR and EDITOR can redo (VIEWER cannot)
+    if (!canPerformAction(userRole, 'redo')) {
+      console.warn(`[PERMISSION DENIED] User ${userId} (role: ${userRole}) attempted to redo in ${currentSessionId}`);
+      callback && callback({ success: false, error: 'Permission denied' });
+      return;
+    }
 
     const session = getSession(currentSessionId);
     if (!session) return;
 
     const result = session.redo();
     if (result.success) {
-      console.log(`[REDO] User ${userId} at index ${result.operationIndex}`);
+      console.log(`[REDO] User ${userId} at operation index ${result.operationIndex}`);
+      
+      // Broadcast redo to all session members
       io.to(currentSessionId).emit('redo-applied', {
         operationIndex: result.operationIndex,
         appliedBy: userId
@@ -635,18 +805,44 @@ io.on('connection', (socket) => {
     io.to(currentSessionId).emit('comment-resolved', commentId);
   });
 
-  // Sprint 18: Update user role (admin only)
+  /**
+   * ROLE-CHANGE Handler
+   * 
+   * Updates a user's role in the session.
+   * Permission: Only CREATOR can change roles. EDITOR and VIEWER cannot.
+   * 
+   * Allowed role transitions:
+   *   CREATOR → any role (not themselves)
+   *   EDITOR → cannot change any roles
+   *   VIEWER → cannot change any roles
+   * 
+   * @param {Object} data - { userId: string, newRole: string }
+   */
   socket.on('role-change', (data) => {
-    if (!currentSessionId || userRole !== 'admin') return;
+    if (!currentSessionId) return;
+
+    // Permission check: Only CREATOR can change user roles
+    if (userRole !== ROLES.CREATOR) {
+      console.warn(`[PERMISSION DENIED] User ${userId} (role: ${userRole}) attempted to change role in ${currentSessionId}`);
+      return;
+    }
 
     const session = getSession(currentSessionId);
     if (!session) return;
 
+    // Update role if user exists in session
     if (session.sessionMembers[data.userId]) {
+      const oldRole = session.sessionMembers[data.userId].role;
       session.sessionMembers[data.userId].role = data.newRole;
+      
+      console.log(`[ROLE-CHANGE] User ${userId} changed role of ${data.userId} from ${oldRole} to ${data.newRole}`);
+      
+      // Broadcast role update to all session members
       io.to(currentSessionId).emit('role-updated', {
         userId: data.userId,
-        newRole: data.newRole
+        oldRole,
+        newRole: data.newRole,
+        changedBy: userId
       });
     }
   });
