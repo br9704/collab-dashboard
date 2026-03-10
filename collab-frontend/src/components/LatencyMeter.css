@@ -1,0 +1,26 @@
+.latency-meter {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid #7c3aed;
+  border-radius: 8px;
+  padding: 10px 15px;
+  z-index: 100;
+  color: #fff;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.latency-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #7c3aed;
+  margin-bottom: 4px;
+}
+
+.latency-avg {
+  font-size: 11px;
+  color: #999;
+  text-align: center;
+}

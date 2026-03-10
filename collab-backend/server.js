@@ -196,7 +196,7 @@ io.on('connection', (socket) => {
     io.to(currentSessionId).emit('text-created', textBox);
   });
 
-  // Update text box
+  // Update text box (Conflict Resolution: Last-Write-Wins)
   socket.on('text-update', (data) => {
     if (!currentSessionId) return;
 
@@ -205,9 +205,18 @@ io.on('connection', (socket) => {
 
     const textBox = session.textBoxes.find(t => t.id === data.id);
     if (textBox && textBox.userId === userId) {
+      // Add serverTime for conflict resolution
+      const serverTime = Date.now();
       textBox.text = data.text;
-      textBox.timestamp = Date.now();
-      io.to(currentSessionId).emit('text-updated', textBox);
+      textBox.timestamp = serverTime;
+      textBox.version = (textBox.version || 0) + 1;
+      
+      // Broadcast to all users with version info
+      io.to(currentSessionId).emit('text-updated', {
+        ...textBox,
+        serverTime,
+        editorId: userId
+      });
     }
   });
 

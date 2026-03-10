@@ -5,6 +5,7 @@ import SessionManager from './components/SessionManager';
 import Canvas from './components/Canvas';
 import UserList from './components/UserList';
 import CursorPresence from './components/CursorPresence';
+import LatencyMeter from './components/LatencyMeter';
 import './App.css';
 
 function App() {
@@ -52,6 +53,8 @@ function App() {
           users={sessionState.users}
           currentUserId={socket?.id}
         />
+
+        <LatencyMeter socket={socket} />
 
         <CursorPresence
           socket={socket}
