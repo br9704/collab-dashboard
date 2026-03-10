@@ -49,43 +49,129 @@ body {
   color: #fff;
 }
 
-.exit-button {
+/* Camera info display (Sprint 13-14) */
+.camera-info {
   position: fixed;
-  bottom: 20px;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid #7c3aed;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #7c3aed;
+  z-index: 50;
+}
+
+/* Panel toggles */
+.panel-toggle {
+  position: fixed;
+  bottom: 280px;
   right: 20px;
-  padding: 10px 20px;
+  padding: 10px 16px;
   background: #7c3aed;
-  color: #fff;
+  color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  z-index: 100;
+  font-size: 12px;
+  transition: background 0.2s;
+  z-index: 999;
 }
 
-.exit-button:hover {
-  background: #6d28d9;
+.panel-toggle:hover {
+  background: #9333ea;
 }
 
+.panel-toggle.activity-toggle {
+  bottom: 240px;
+}
+
+/* Session info */
 .session-info {
   position: fixed;
   bottom: 20px;
-  left: 20px;
-  padding: 10px 15px;
-  background: rgba(0, 0, 0, 0.8);
+  right: 20px;
+  background: rgba(0, 0, 0, 0.95);
   border: 1px solid #7c3aed;
-  border-radius: 4px;
-  font-size: 12px;
-  z-index: 100;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: #aaa;
+  z-index: 999;
 }
 
 .session-info code {
-  color: #4ade80;
-  font-family: monospace;
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.2);
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-family: 'Monaco', 'Courier New', monospace;
 }
 
-code {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 2px 6px;
+.role-badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 4px 8px;
   border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  background: rgba(124, 58, 237, 0.3);
+  color: #7c3aed;
+}
+
+/* Exit button */
+.exit-button {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  padding: 10px 20px;
+  background: #d4191a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s;
+  z-index: 999;
+}
+
+.exit-button:hover {
+  background: #ff4444;
+}
+
+/* Session Manager Container */
+.session-manager-container {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .camera-info {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
+
+  .panel-toggle {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .session-info {
+    font-size: 10px;
+    padding: 10px 12px;
+  }
+
+  .exit-button {
+    padding: 8px 16px;
+    font-size: 11px;
+  }
 }

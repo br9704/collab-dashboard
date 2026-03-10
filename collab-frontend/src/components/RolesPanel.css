@@ -1,0 +1,121 @@
+.roles-panel {
+  position: fixed;
+  right: 20px;
+  top: 100px;
+  width: 320px;
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid #7c3aed;
+  border-radius: 8px;
+  padding: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.roles-header {
+  border-bottom: 1px solid #7c3aed;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+
+.roles-header h3 {
+  margin: 0 0 5px 0;
+  color: #7c3aed;
+  font-size: 14px;
+}
+
+.roles-help {
+  margin: 0;
+  color: #888;
+  font-size: 11px;
+}
+
+.roles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.role-item {
+  background: rgba(124, 58, 237, 0.1);
+  border: 1px solid #7c3aed;
+  border-radius: 4px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-user {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-id {
+  color: #e0e0e0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.role-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  width: fit-content;
+  font-weight: 500;
+}
+
+.role-badge.admin {
+  background: #ff6b6b;
+  color: white;
+}
+
+.role-badge.editor {
+  background: #7c3aed;
+  color: white;
+}
+
+.role-badge.viewer {
+  background: #888;
+  color: white;
+}
+
+.role-select {
+  flex-shrink: 0;
+}
+
+.role-select select {
+  padding: 4px 8px;
+  background: #111;
+  color: #7c3aed;
+  border: 1px solid #7c3aed;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.role-select select:focus {
+  outline: none;
+  border-color: #9333ea;
+}
+
+.roles-info {
+  border-top: 1px solid #7c3aed;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.role-desc {
+  font-size: 11px;
+  color: #aaa;
+  line-height: 1.4;
+}
+
+.role-desc strong {
+  color: #7c3aed;
+}
