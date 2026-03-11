@@ -1,16 +1,14 @@
 .activity-log {
-  position: fixed;
-  left: 20px;
-  bottom: 20px;
-  width: 280px;
-  background: rgba(0, 0, 0, 0.85);
-  border: 1px solid rgba(124, 58, 237, 0.3);
+  position: relative;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 12px;
-  max-height: 350px;
+  padding: 16px;
+  max-height: 400px;
   overflow-y: auto;
-  z-index: 999;
-  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
 .log-header {
@@ -18,7 +16,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
-  border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+  border-bottom: 1px solid #e5e7eb;
   padding-bottom: 8px;
 }
 
@@ -26,41 +24,55 @@
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #a78bfa;
+  color: #1a1a1a;
   letter-spacing: 0.3px;
   text-transform: uppercase;
 }
 
 .log-count {
   font-size: 11px;
-  color: #888;
+  color: #999999;
 }
 
 .log-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .no-activity {
-  color: #888;
+  color: #999999;
   font-size: 12px;
   text-align: center;
-  padding: 20px 0;
+  padding: 24px 0;
   margin: 0;
 }
 
 .log-entry {
-  background: rgba(124, 58, 237, 0.08);
-  border-left: 1.5px solid #7c3aed;
-  padding: 8px 10px;
-  border-radius: 3px;
+  background: #f8f8f8;
+  border-left: 2px solid #9ca3af;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
   font-size: 11px;
-  transition: background 0.15s;
+  transition: all 0.2s ease-out;
+  animation: log-entry-fadeIn 0.2s ease-out;
+}
+
+@keyframes log-entry-fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .log-entry:hover {
-  background: rgba(124, 58, 237, 0.15);
+  background: #f0f0f0;
+  border-left-color: #6b7280;
 }
 
 .log-action {
@@ -72,32 +84,32 @@
 }
 
 .action-label {
-  color: #a78bfa;
+  color: #374151;
   font-weight: 600;
   font-size: 11px;
   letter-spacing: 0.2px;
 }
 
 .action-user {
-  color: #888;
+  color: #374151;
   font-size: 10px;
-  background: rgba(124, 58, 237, 0.1);
+  background: #f3f4f6;
   padding: 2px 6px;
   border-radius: 3px;
   font-weight: 500;
 }
 
 .log-time {
-  color: #888;
+  color: #999999;
   font-size: 10px;
   margin-bottom: 4px;
   font-weight: 500;
 }
 
 .log-details {
-  color: #aaa;
+  color: #666666;
   font-size: 10px;
-  background: rgba(0, 0, 0, 0.2);
+  background: #f8f8f8;
   padding: 6px;
   border-radius: 3px;
   margin-top: 4px;
@@ -116,15 +128,15 @@
 }
 
 .activity-log::-webkit-scrollbar-track {
-  background: rgba(124, 58, 237, 0.1);
+  background: #f0f0f0;
   border-radius: 3px;
 }
 
 .activity-log::-webkit-scrollbar-thumb {
-  background: #7c3aed;
+  background: #9ca3af;
   border-radius: 3px;
 }
 
 .activity-log::-webkit-scrollbar-thumb:hover {
-  background: #9333ea;
+  background: #6b7280;
 }
