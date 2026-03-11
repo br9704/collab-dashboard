@@ -12,7 +12,7 @@
  * Camera transform (pan/zoom) is applied to all canvas content.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import TextInputDialog from './TextInputDialog';
 import TextFormattingToolbar from './TextFormattingToolbar';
 import ExportDialog from './ExportDialog';
@@ -73,6 +73,19 @@ export default function Canvas({
   // Whether the user is actively dragging a stroke (prevents stale suggestions)
   const isDrawingRef = useRef(false);
 
+  // PERFORMANCE: Replace window globals with refs
+  const currentStrokeRef = useRef(null);
+  const shapeStartRef = useRef(null);
+  const textInputPositionRef = useRef(null);
+
+  // PERFORMANCE: Dirty flag and animation frame tracking
+  const dirtyRef = useRef(true);
+  const animationFrameRef = useRef(null);
+
+  // PERFORMANCE: Throttle tracking for cursor events
+  const lastCursorEmitRef = useRef(0);
+  const CURSOR_THROTTLE_MS = 33; // ~30fps
+
   // Viewers cannot draw
   const canDraw = userRole !== 'viewer';
 
@@ -83,126 +96,233 @@ export default function Canvas({
     }
   }, [sessionState.camera]);
 
-  // ── Canvas redraw ────────────────────────────────────────────────────────
+  // ── Keyboard shortcuts for tool selection ────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!canDraw) return;
+
+      // Only trigger if canvas is focused or no input is focused
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement?.tagName === 'INPUT' ||
+                             activeElement?.tagName === 'TEXTAREA' ||
+                             activeElement?.isContentEditable;
+
+      if (isInputFocused) return;
+
+      switch (e.key) {
+        case '1':
+          setTool('pencil');
+          break;
+        case '2':
+          setTool('line');
+          break;
+        case '3':
+          setTool('rectangle');
+          break;
+        case '4':
+          setTool('circle');
+          break;
+        case '5':
+          setTool('text');
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canDraw]);
+
+  // PERFORMANCE: Memoize layer visibility map
+  const layerVisibilityMap = useMemo(() => {
+    const map = new Map();
+    if (!sessionState.layers || sessionState.layers.length === 0) {
+      return map; // Empty map means all layers visible
+    }
+    sessionState.layers.forEach(layer => {
+      map.set(layer.id, layer.visible !== false);
+    });
+    return map;
+  }, [sessionState.layers]);
+
+  // PERFORMANCE: Helper to check layer visibility using memoized map
+  const isLayerVisible = useCallback((layerId) => {
+    if (layerVisibilityMap.size === 0) return true;
+    return layerVisibilityMap.get(layerId) !== false;
+  }, [layerVisibilityMap]);
+
+  // PERFORMANCE: Canvas resize observer (only set dimensions on actual resize)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    canvas.width = window.innerWidth - 200;
-    canvas.height = window.innerHeight - 100;
+    const resizeCanvas = () => {
+      const newWidth = window.innerWidth - 200;
+      const newHeight = window.innerHeight - 100;
 
-    const ctx = canvas.getContext('2d');
-    contextRef.current = ctx;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+      // Only update if dimensions actually changed
+      if (canvas.width !== newWidth || canvas.height !== newHeight) {
+        canvas.width = newWidth;
+        canvas.height = newHeight;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Re-initialize context settings after resize
+        const ctx = canvas.getContext('2d');
+        contextRef.current = ctx;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
 
-    ctx.save();
-    ctx.translate(camera.x, camera.y);
-    ctx.scale(camera.zoom, camera.zoom);
-
-    /** Check if a layer is visible */
-    const isLayerVisible = (layerId) => {
-      if (!sessionState.layers || sessionState.layers.length === 0) return true;
-      const layer = sessionState.layers.find(l => l.id === layerId);
-      return layer ? layer.visible !== false : true;
+        dirtyRef.current = true; // Mark for redraw
+      }
     };
 
-    // Draw freehand strokes
-    sessionState.strokes.forEach(stroke => {
-      if (!isLayerVisible(stroke.layerId)) return;
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.width / camera.zoom;
-      ctx.beginPath();
-      stroke.points.forEach((point, idx) => {
-        if (idx === 0) ctx.moveTo(point.x, point.y);
-        else ctx.lineTo(point.x, point.y);
+    // Initial size
+    resizeCanvas();
+
+    // Use ResizeObserver for efficient resize detection
+    const resizeObserver = new ResizeObserver(() => {
+      resizeCanvas();
+    });
+    resizeObserver.observe(canvas);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // PERFORMANCE: Optimized canvas redraw with requestAnimationFrame
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = contextRef.current;
+    if (!ctx) return;
+
+    // Mark dirty when dependencies change
+    dirtyRef.current = true;
+
+    // Render function using requestAnimationFrame
+    const render = () => {
+      if (!dirtyRef.current) {
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
+      }
+
+      dirtyRef.current = false;
+
+      // Clear canvas
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Apply camera transform
+      ctx.save();
+      ctx.translate(camera.x, camera.y);
+      ctx.scale(camera.zoom, camera.zoom);
+
+      // Draw freehand strokes
+      sessionState.strokes.forEach(stroke => {
+        if (!isLayerVisible(stroke.layerId)) return;
+        ctx.strokeStyle = stroke.color;
+        ctx.lineWidth = stroke.width / camera.zoom;
+        ctx.beginPath();
+        stroke.points.forEach((point, idx) => {
+          if (idx === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        });
+        ctx.stroke();
       });
-      ctx.stroke();
-    });
 
-    // Draw shapes (including smart shapes)
-    sessionState.shapes.forEach(shape => {
-      if (!isLayerVisible(shape.layerId)) return;
-      ctx.strokeStyle = shape.color;
-      ctx.lineWidth = (shape.width || 2) / camera.zoom;
+      // Draw shapes (including smart shapes)
+      sessionState.shapes.forEach(shape => {
+        if (!isLayerVisible(shape.layerId)) return;
+        ctx.strokeStyle = shape.color;
+        ctx.lineWidth = (shape.width || 2) / camera.zoom;
 
-      if (shape.type === 'line' && shape.points?.length === 2) {
-        ctx.beginPath();
-        ctx.moveTo(shape.points[0].x, shape.points[0].y);
-        ctx.lineTo(shape.points[1].x, shape.points[1].y);
-        ctx.stroke();
-
-      } else if (shape.type === 'rectangle') {
-        if (shape.bounds) {
-          ctx.strokeRect(shape.bounds.x, shape.bounds.y, shape.bounds.width, shape.bounds.height);
-        } else if (shape.points?.length === 2) {
-          const x = Math.min(shape.points[0].x, shape.points[1].x);
-          const y = Math.min(shape.points[0].y, shape.points[1].y);
-          const w = Math.abs(shape.points[1].x - shape.points[0].x);
-          const h = Math.abs(shape.points[1].y - shape.points[0].y);
-          ctx.strokeRect(x, y, w, h);
-        } else if (shape.x !== undefined) {
-          // Placed smart shape or template shape
-          renderSmartShape(ctx, shape);
-        }
-
-      } else if (shape.type === 'circle') {
-        if (shape.bounds?.center) {
+        if (shape.type === 'line' && shape.points?.length === 2) {
           ctx.beginPath();
-          ctx.arc(shape.bounds.center.x, shape.bounds.center.y, shape.bounds.radius, 0, 2 * Math.PI);
+          ctx.moveTo(shape.points[0].x, shape.points[0].y);
+          ctx.lineTo(shape.points[1].x, shape.points[1].y);
           ctx.stroke();
+
+        } else if (shape.type === 'rectangle') {
+          if (shape.bounds) {
+            ctx.strokeRect(shape.bounds.x, shape.bounds.y, shape.bounds.width, shape.bounds.height);
+          } else if (shape.points?.length === 2) {
+            const x = Math.min(shape.points[0].x, shape.points[1].x);
+            const y = Math.min(shape.points[0].y, shape.points[1].y);
+            const w = Math.abs(shape.points[1].x - shape.points[0].x);
+            const h = Math.abs(shape.points[1].y - shape.points[0].y);
+            ctx.strokeRect(x, y, w, h);
+          } else if (shape.x !== undefined) {
+            // Placed smart shape or template shape
+            renderSmartShape(ctx, shape);
+          }
+
+        } else if (shape.type === 'circle') {
+          if (shape.bounds?.center) {
+            ctx.beginPath();
+            ctx.arc(shape.bounds.center.x, shape.bounds.center.y, shape.bounds.radius, 0, 2 * Math.PI);
+            ctx.stroke();
+          } else if (shape.x !== undefined) {
+            renderSmartShape(ctx, shape);
+          }
+
         } else if (shape.x !== undefined) {
+          // Smart shape / template shape with x, y, width, height
           renderSmartShape(ctx, shape);
         }
+      });
 
-      } else if (shape.x !== undefined) {
-        // Smart shape / template shape with x, y, width, height
-        renderSmartShape(ctx, shape);
+      // Draw text boxes
+      sessionState.textBoxes.forEach(textBox => {
+        if (!isLayerVisible(textBox.layerId)) return;
+        ctx.fillStyle = textBox.color || '#000000';
+        const formatting = sessionState.textFormatting?.[textBox.id] || {};
+        const fontSize = formatting.fontSize || 16;
+        const bold = formatting.bold ? 'bold ' : '';
+        const italic = formatting.italic ? 'italic ' : '';
+        ctx.font = `${italic}${bold}${fontSize}px Arial`;
+        ctx.fillText(textBox.text, textBox.x, textBox.y);
+
+        if (formatting.underline) {
+          const metrics = ctx.measureText(textBox.text);
+          ctx.strokeStyle = textBox.color || '#000000';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(textBox.x, textBox.y + 4);
+          ctx.lineTo(textBox.x + metrics.width, textBox.y + 4);
+          ctx.stroke();
+        }
+        if (formatting.strikethrough) {
+          const metrics = ctx.measureText(textBox.text);
+          ctx.strokeStyle = textBox.color || '#000000';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(textBox.x, textBox.y - fontSize / 3);
+          ctx.lineTo(textBox.x + metrics.width, textBox.y - fontSize / 3);
+          ctx.stroke();
+        }
+      });
+
+      ctx.restore();
+
+      // Continue animation loop
+      animationFrameRef.current = requestAnimationFrame(render);
+    };
+
+    // Start render loop
+    animationFrameRef.current = requestAnimationFrame(render);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
-    });
-
-    // Draw text boxes
-    sessionState.textBoxes.forEach(textBox => {
-      if (!isLayerVisible(textBox.layerId)) return;
-      ctx.fillStyle = textBox.color || '#000000';
-      const formatting = sessionState.textFormatting?.[textBox.id] || {};
-      const fontSize = formatting.fontSize || 16;
-      const bold = formatting.bold ? 'bold ' : '';
-      const italic = formatting.italic ? 'italic ' : '';
-      ctx.font = `${italic}${bold}${fontSize}px Arial`;
-      ctx.fillText(textBox.text, textBox.x, textBox.y);
-
-      if (formatting.underline) {
-        const metrics = ctx.measureText(textBox.text);
-        ctx.strokeStyle = textBox.color || '#000000';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(textBox.x, textBox.y + 4);
-        ctx.lineTo(textBox.x + metrics.width, textBox.y + 4);
-        ctx.stroke();
-      }
-      if (formatting.strikethrough) {
-        const metrics = ctx.measureText(textBox.text);
-        ctx.strokeStyle = textBox.color || '#000000';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(textBox.x, textBox.y - fontSize / 3);
-        ctx.lineTo(textBox.x + metrics.width, textBox.y - fontSize / 3);
-        ctx.stroke();
-      }
-    });
-
-    ctx.restore();
+    };
   }, [
     sessionState.strokes,
     sessionState.shapes,
     sessionState.textBoxes,
     sessionState.textFormatting,
-    sessionState.layers,
     camera,
+    isLayerVisible,
   ]);
 
   // ── Event handlers ───────────────────────────────────────────────────────
@@ -231,7 +351,7 @@ export default function Canvas({
       const x = (e.clientX - rect.left - camera.x) / camera.zoom;
       const y = (e.clientY - rect.top - camera.y) / camera.zoom;
       setTextDialogPos({ x: e.clientX, y: e.clientY });
-      window.textInputPosition = { x, y };
+      textInputPositionRef.current = { x, y };
       setTextDialogOpen(true);
       return;
     }
@@ -245,10 +365,9 @@ export default function Canvas({
     const y = (e.clientY - rect.top - camera.y) / camera.zoom;
 
     if (tool === 'pencil') {
-      window.currentStroke = [{ x, y }];
+      currentStrokeRef.current = [{ x, y }];
     } else if (tool === 'line' || tool === 'rectangle' || tool === 'circle') {
-      window.shapeStart = { x, y };
-      window.shapePoints = [{ x, y }];
+      shapeStartRef.current = { x, y };
     }
   };
 
@@ -257,17 +376,27 @@ export default function Canvas({
 
     // Canvas panning
     if (isDraggingCanvas && dragStart) {
+      // PERFORMANCE: Throttle camera updates (30fps max)
+      const now = Date.now();
+      const shouldEmit = now - lastCursorEmitRef.current >= CURSOR_THROTTLE_MS;
+
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
       const newCamera = {
         x: camera.x + deltaX,
         y: camera.y + deltaY,
         zoom: camera.zoom,
-        timestamp: Date.now(),
+        timestamp: now,
       };
       setCamera(newCamera);
-      socket?.emit('camera-change', newCamera);
+
+      if (shouldEmit) {
+        socket?.emit('camera-change', newCamera);
+        lastCursorEmitRef.current = now;
+      }
+
       setDragStart({ x: e.clientX, y: e.clientY });
+      dirtyRef.current = true; // Mark for redraw
       return;
     }
 
@@ -277,18 +406,24 @@ export default function Canvas({
     const x = (e.clientX - rect.left - camera.x) / camera.zoom;
     const y = (e.clientY - rect.top - camera.y) / camera.zoom;
 
-    if (tool === 'pencil' && window.currentStroke) {
-      window.currentStroke.push({ x, y });
+    if (tool === 'pencil' && currentStrokeRef.current) {
+      currentStrokeRef.current.push({ x, y });
 
-      // Live preview segment
+      // PERFORMANCE: Live preview with proper camera transform
       const ctx = canvasRef.current.getContext('2d');
+      ctx.save();
+      ctx.translate(camera.x, camera.y);
+      ctx.scale(camera.zoom, camera.zoom);
+
       ctx.strokeStyle = color;
-      ctx.lineWidth = lineWidth;
+      ctx.lineWidth = lineWidth / camera.zoom;
       ctx.beginPath();
-      const prev = window.currentStroke[window.currentStroke.length - 2];
-      ctx.moveTo(prev.x + camera.x, prev.y + camera.y);
-      ctx.lineTo(x + camera.x, y + camera.y);
+      const prev = currentStrokeRef.current[currentStrokeRef.current.length - 2];
+      ctx.moveTo(prev.x, prev.y);
+      ctx.lineTo(x, y);
       ctx.stroke();
+
+      ctx.restore();
     }
   };
 
@@ -305,24 +440,29 @@ export default function Canvas({
     const x = (e.clientX - rect.left - camera.x) / camera.zoom;
     const y = (e.clientY - rect.top - camera.y) / camera.zoom;
 
-    if (tool === 'pencil' && window.currentStroke && window.currentStroke.length > 1) {
-      const completedStroke = [...window.currentStroke];
+    if (tool === 'pencil' && currentStrokeRef.current && currentStrokeRef.current.length > 1) {
+      const completedStroke = [...currentStrokeRef.current];
 
       socket?.emit('stroke-draw', { points: completedStroke, color, width: lineWidth });
 
       // ── v4 Feature 3: Pass completed stroke to AI completion ────────
       setLastCompletedStroke(completedStroke);
-      window.currentStroke = null;
+      currentStrokeRef.current = null;
 
-    } else if (window.shapeStart) {
+      // Mark for full redraw to clear live preview
+      dirtyRef.current = true;
+
+    } else if (shapeStartRef.current) {
       socket?.emit('shape-draw', {
         type: tool,
-        points: [window.shapeStart, { x, y }],
+        points: [shapeStartRef.current, { x, y }],
         color,
         width: lineWidth,
       });
-      window.shapeStart = null;
-      window.shapePoints = null;
+      shapeStartRef.current = null;
+
+      // Mark for redraw
+      dirtyRef.current = true;
     }
   };
 
@@ -334,22 +474,23 @@ export default function Canvas({
       const newCamera = { x: camera.x, y: camera.y, zoom: newZoom, timestamp: Date.now() };
       setCamera(newCamera);
       socket?.emit('camera-change', newCamera);
+      dirtyRef.current = true; // Mark for redraw
     }
   };
 
   // ── Text handlers ────────────────────────────────────────────────────────
 
   const handleTextSubmit = (text) => {
-    const pos = window.textInputPosition;
+    const pos = textInputPositionRef.current;
     if (pos) {
       socket?.emit('text-add', { text, x: pos.x, y: pos.y, color });
-      window.textInputPosition = null;
+      textInputPositionRef.current = null;
     }
     setTextDialogOpen(false);
   };
 
   const handleTextCancel = () => {
-    window.textInputPosition = null;
+    textInputPositionRef.current = null;
     setTextDialogOpen(false);
   };
 
@@ -487,13 +628,15 @@ export default function Canvas({
       />
 
       {/* Main toolbar */}
-      <div className="canvas-toolbar">
+      <div className="canvas-toolbar" role="toolbar" aria-label="Drawing tools">
         <div className="tool-group">
           <button
             onClick={() => setTool('pencil')}
             className={`tool-button ${tool === 'pencil' ? 'active' : ''}`}
             disabled={!canDraw}
             title="Pencil (freehand)"
+            aria-label="Pencil tool - Draw freehand strokes (Press 1)"
+            aria-pressed={tool === 'pencil'}
           >
             ✏️
           </button>
@@ -502,6 +645,8 @@ export default function Canvas({
             className={`tool-button ${tool === 'line' ? 'active' : ''}`}
             disabled={!canDraw}
             title="Line"
+            aria-label="Line tool - Draw straight lines (Press 2)"
+            aria-pressed={tool === 'line'}
           >
             📏
           </button>
@@ -510,6 +655,8 @@ export default function Canvas({
             className={`tool-button ${tool === 'rectangle' ? 'active' : ''}`}
             disabled={!canDraw}
             title="Rectangle"
+            aria-label="Rectangle tool - Draw rectangles (Press 3)"
+            aria-pressed={tool === 'rectangle'}
           >
             ▭
           </button>
@@ -518,6 +665,8 @@ export default function Canvas({
             className={`tool-button ${tool === 'circle' ? 'active' : ''}`}
             disabled={!canDraw}
             title="Circle"
+            aria-label="Circle tool - Draw circles (Press 4)"
+            aria-pressed={tool === 'circle'}
           >
             ⭕
           </button>
@@ -526,6 +675,8 @@ export default function Canvas({
             className={`tool-button ${tool === 'text' ? 'active' : ''}`}
             disabled={!canDraw}
             title="Text"
+            aria-label="Text tool - Add text to canvas (Press 5)"
+            aria-pressed={tool === 'text'}
           >
             📝
           </button>
@@ -569,7 +720,7 @@ export default function Canvas({
         </div>
 
         <div className="tool-group">
-          <span className="zoom-info" title="Ctrl+Scroll to zoom, Middle-click to pan">
+          <span className="zoom-info" title="Ctrl+Scroll to zoom, Middle-click to pan" role="status" aria-live="polite">
             🔍 {(camera.zoom * 100).toFixed(0)}%
           </span>
         </div>
@@ -580,13 +731,14 @@ export default function Canvas({
             className="tool-button"
             disabled={!canDraw}
             title="Export drawing"
+            aria-label="Export drawing to file"
           >
             💾
           </button>
         </div>
 
         <div className="tool-group">
-          <span className={`role-indicator role-${userRole}`}>
+          <span className={`role-indicator role-${userRole}`} role="status" aria-live="polite">
             {userRole === 'viewer' ? '👁️ View Only' : userRole === 'creator' ? '👑 Creator' : '✏️ Editor'}
           </span>
         </div>
@@ -602,6 +754,8 @@ export default function Canvas({
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
         style={{ cursor: getCursorStyle() }}
+        aria-label="Collaborative drawing canvas - Use keyboard shortcuts 1-5 to select tools, Ctrl+Scroll to zoom, Middle-click to pan"
+        tabIndex={0}
       />
 
       {/* v4 Feature 4: Video embed overlays */}
