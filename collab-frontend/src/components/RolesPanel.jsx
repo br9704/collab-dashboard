@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import './RolesPanel.css';
 
+/**
+ * RolesPanel — admin-only panel for changing user roles.
+ * Shows all session members with dropdown to assign creator/editor/viewer roles.
+ * Only visible to session creators.
+ *
+ * @param {Object} props
+ * @param {Object} props.socket         - Socket.io client instance
+ * @param {Array}  props.users          - Array of connected user objects
+ * @param {Object} props.sessionMembers - Map of userId → { role }
+ */
 export default function RolesPanel({ socket, users, sessionMembers }) {
   const handleRoleChange = (userId, newRole) => {
     socket?.emit('role-change', { userId, newRole });

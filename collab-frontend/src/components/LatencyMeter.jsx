@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import './LatencyMeter.css';
 
+/**
+ * LatencyMeter — displays live round-trip latency to the server.
+ * Sends periodic ping events and measures the response time.
+ *
+ * @param {Object} props
+ * @param {Object} props.socket - Socket.io client instance
+ */
 export default function LatencyMeter({ socket }) {
   const [latency, setLatency] = useState(null);
   const [avgLatency, setAvgLatency] = useState(null);

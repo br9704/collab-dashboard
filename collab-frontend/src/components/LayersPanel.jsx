@@ -1,6 +1,19 @@
 import { useState } from 'react';
 import './LayersPanel.css';
 
+/**
+ * LayersPanel — sidebar for managing drawing layers.
+ * Supports creating, deleting, renaming, reordering, and toggling layer visibility.
+ *
+ * @param {Object}   props
+ * @param {Array}    props.layers         - Array of layer objects
+ * @param {Array}    props.layerOrder     - Ordered array of layer IDs
+ * @param {Function} props.onLayerCreate  - Creates a new layer
+ * @param {Function} props.onLayerDelete  - Deletes a layer by ID
+ * @param {Function} props.onLayerUpdate  - Updates layer properties
+ * @param {Function} props.onLayerReorder - Reorders layers
+ * @param {boolean}  props.canEdit        - Whether the current user can modify layers
+ */
 export default function LayersPanel({ 
   layers = [], 
   layerOrder = [], 

@@ -1,6 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import './Toast.css';
 
+/**
+ * Toast — individual toast notification that auto-dismisses after 3 seconds.
+ *
+ * @param {Object}   props
+ * @param {string}   props.message - Notification text
+ * @param {string}   [props.type='info'] - 'success' | 'error' | 'warning' | 'info'
+ * @param {Function} props.onClose - Called when toast dismisses
+ */
 const Toast = ({ message, type = 'info', onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {

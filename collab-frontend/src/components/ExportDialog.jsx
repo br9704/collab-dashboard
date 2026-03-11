@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import './ExportDialog.css';
 
+/**
+ * ExportDialog — modal dialog for exporting the canvas as PNG, SVG, or JSON.
+ * Renders the current canvas state to the selected format and triggers download.
+ *
+ * @param {Object}   props
+ * @param {boolean}  props.isOpen     - Whether the dialog is visible
+ * @param {Function} props.onClose    - Called when dialog is dismissed
+ * @param {Object}   props.canvasRef  - Ref to the HTML canvas element
+ * @param {Object}   props.sessionState - Current session state for JSON export
+ */
 export default function ExportDialog({ 
   isOpen, 
   onClose, 

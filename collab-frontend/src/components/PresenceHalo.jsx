@@ -1,5 +1,13 @@
 import './PresenceHalo.css';
 
+/**
+ * PresenceHalo — renders colored glow indicators around the active drawing area
+ * of each user, showing who is currently drawing and where on the canvas.
+ *
+ * @param {Object} props
+ * @param {Object} props.userPresence - Map of userId → { cursor, isDrawing, activeArea }
+ * @param {Array}  props.users        - Array of connected user objects
+ */
 export default function PresenceHalo({ userPresence, users }) {
   const getColor = (userId) => {
     const colors = ['#ff6b6b', '#4ecdc4', '#6b7280', '#ffa502', '#a8e6cf'];

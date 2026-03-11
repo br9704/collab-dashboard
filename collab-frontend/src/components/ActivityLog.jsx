@@ -1,5 +1,14 @@
 import './ActivityLog.css';
 
+/**
+ * ActivityLog — displays a timestamped feed of session events.
+ * Shows user joins/leaves, strokes, shapes, text changes, and comments
+ * in reverse-chronological order with relative timestamps.
+ *
+ * @param {Object} props
+ * @param {Array}  props.activityLog - Array of { action, userId, timestamp, details }
+ * @param {Array}  props.users       - Array of connected user objects
+ */
 export default function ActivityLog({ activityLog, users }) {
   const formatTime = (timestamp) => {
     if (!timestamp) return 'Unknown';

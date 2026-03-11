@@ -1,6 +1,22 @@
 import { useState } from 'react';
 import './TextFormattingToolbar.css';
 
+/**
+ * TextFormattingToolbar — floating toolbar for text styling.
+ * Provides bold, italic, underline toggles and font size control.
+ * Appears near the selected text box.
+ *
+ * @param {Object}   props
+ * @param {boolean}  props.isVisible   - Whether the toolbar is shown
+ * @param {boolean}  props.isBold      - Current bold state
+ * @param {boolean}  props.isItalic    - Current italic state
+ * @param {boolean}  props.isUnderline - Current underline state
+ * @param {number}   props.fontSize    - Current font size
+ * @param {Function} props.onBoldToggle      - Toggle bold
+ * @param {Function} props.onItalicToggle    - Toggle italic
+ * @param {Function} props.onUnderlineToggle - Toggle underline
+ * @param {Function} props.onFontSizeChange  - Change font size
+ */
 export default function TextFormattingToolbar({ 
   isVisible, 
   selectedTextId, 

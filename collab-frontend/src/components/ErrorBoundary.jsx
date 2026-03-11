@@ -1,6 +1,12 @@
 import { Component } from 'react';
 import './ErrorBoundary.css';
 
+/**
+ * ErrorBoundary — catches React rendering errors and displays a fallback UI
+ * instead of crashing the entire application. Includes a retry button.
+ *
+ * @extends {Component}
+ */
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);

@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import './CursorPresence.css';
 
+/**
+ * CursorPresence — renders remote users' cursors as colored pointer overlays.
+ * Uses requestAnimationFrame for smooth cursor interpolation.
+ *
+ * @param {Object} props
+ * @param {Object} props.socket        - Socket.io client instance
+ * @param {Object} props.cursors       - Map of userId → { x, y, timestamp }
+ * @param {Array}  props.users         - Array of connected user objects
+ * @param {string} props.currentUserId - Current user's socket ID (excluded from rendering)
+ */
 export default function CursorPresence({ socket, cursors, users, currentUserId }) {
   const animationFrameRef = useRef({});
   const [displayCursors, setDisplayCursors] = useState({});

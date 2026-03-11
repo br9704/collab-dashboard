@@ -1,5 +1,14 @@
 import './UndoRedoControls.css';
 
+/**
+ * UndoRedoControls — undo/redo buttons that emit socket events.
+ * Disabled when at history boundaries. Also available via Ctrl+Z / Ctrl+Y.
+ *
+ * @param {Object} props
+ * @param {Object} props.socket        - Socket.io client instance
+ * @param {number} props.historyIndex  - Current position in undo history
+ * @param {number} props.historyLength - Total number of history entries
+ */
 export default function UndoRedoControls({ socket, historyIndex, historyLength }) {
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < (historyLength - 1);

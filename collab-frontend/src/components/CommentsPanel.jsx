@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import './CommentsPanel.css';
 
+/**
+ * CommentsPanel — threaded comment sidebar for a selected stroke.
+ * Users can add comments (Ctrl+Enter), and comment authors can resolve them.
+ *
+ * @param {Object} props
+ * @param {Object} props.socket        - Socket.io client instance
+ * @param {string} props.strokeId      - ID of the stroke being commented on
+ * @param {Array}  props.comments      - Array of comment objects for this stroke
+ * @param {string} props.currentUserId - Current user's socket ID
+ */
 export default function CommentsPanel({ socket, strokeId, comments, currentUserId }) {
   const [newComment, setNewComment] = useState('');
 

@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import './SessionManager.css';
 
+/**
+ * SessionManager — landing screen for creating or joining a collaborative session.
+ * Displays session ID input, create/join buttons, and connection status.
+ *
+ * @param {Object}   props
+ * @param {Object}   props.socket        - Socket.io client instance
+ * @param {Function} props.onSessionJoin - Called with sessionId when user creates or joins
+ */
 export default function SessionManager({ socket, onSessionJoin }) {
   const [sessionId, setSessionId] = useState('');
   const [loading, setLoading] = useState(false);

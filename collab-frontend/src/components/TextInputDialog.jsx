@@ -1,6 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import './TextInputDialog.css';
 
+/**
+ * TextInputDialog — modal dialog for entering text to place on the canvas.
+ * Auto-focuses on mount, supports Enter to submit and Escape to cancel.
+ * Replaces the native `prompt()` for better UX.
+ *
+ * @param {Object}   props
+ * @param {number}   props.x        - Canvas X coordinate for text placement
+ * @param {number}   props.y        - Canvas Y coordinate for text placement
+ * @param {Function} props.onSubmit - Called with the entered text string
+ * @param {Function} props.onCancel - Called when dialog is dismissed
+ */
 export default function TextInputDialog({ x, y, onSubmit, onCancel }) {
   const [text, setText] = useState('');
   const inputRef = useRef(null);

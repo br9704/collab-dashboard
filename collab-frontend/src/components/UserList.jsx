@@ -1,5 +1,15 @@
 import './UserList.css';
 
+/**
+ * UserList — displays connected users with color-coded avatars and role badges.
+ * Highlights the current user with "(You)" label.
+ *
+ * @param {Object} props
+ * @param {Array}  props.users          - Array of connected user objects
+ * @param {Object} props.sessionMembers - Map of userId → { role }
+ * @param {string} props.currentUserId  - Current user's socket ID
+ * @param {string} props.userRole       - Current user's role
+ */
 export default function UserList({ users, sessionMembers, currentUserId, userRole }) {
   const getColor = (index) => {
     const colors = ['#ff6b6b', '#4ecdc4', '#6b7280', '#ffa502', '#a8e6cf'];

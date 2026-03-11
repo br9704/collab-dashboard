@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 
+/**
+ * useSocket — manages a persistent Socket.io connection with automatic reconnection.
+ * Handles connect/disconnect/error events and exposes connection state.
+ *
+ * @param {string} [url='http://localhost:3001'] - Socket.io server URL
+ * @returns {{ socket: Object|null, connected: boolean, error: string|null, reconnectAttempt: number }}
+ */
 export function useSocket(url = 'http://localhost:3001') {
   const socketRef = useRef(null);
   const urlRef = useRef(url);
