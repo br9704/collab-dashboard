@@ -5,9 +5,17 @@ export default function LatencyMeter({ socket }) {
   const [latency, setLatency] = useState(null);
   const [avgLatency, setAvgLatency] = useState(null);
   const [latencies, setLatencies] = useState([]);
+  const [connected, setConnected] = useState(false);
 
   useEffect(() => {
     if (!socket) return;
+
+    const handleConnect = () => setConnected(true);
+    const handleDisconnect = () => setConnected(false);
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    setConnected(socket.connected);
 
     const measureLatency = () => {
       const clientTime = Date.now();
@@ -35,12 +43,35 @@ export default function LatencyMeter({ socket }) {
 
     return () => {
       clearInterval(interval);
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
       socket.off('latency-pong');
     };
   }, [socket]);
 
+  // Determine connection quality based on average latency
+  const getConnectionQuality = () => {
+    if (!connected) return 'disconnected';
+    if (!avgLatency) return 'unknown';
+    if (avgLatency < 50) return 'good';
+    if (avgLatency < 150) return 'ok';
+    return 'poor';
+  };
+
+  const quality = getConnectionQuality();
+
+  const getConnectionLabel = () => {
+    if (!connected) return 'Disconnected';
+    if (quality === 'unknown') return 'Connecting...';
+    return 'Connected';
+  };
+
   return (
     <div className="latency-meter">
+      <div className="connection-status">
+        <div className={`connection-dot ${quality}`} title={getConnectionLabel()} />
+        <span className="connection-label">{getConnectionLabel()}</span>
+      </div>
       <div className="latency-value">
         {latency ? `${latency}ms` : '—'}
       </div>
