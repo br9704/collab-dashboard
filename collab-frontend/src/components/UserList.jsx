@@ -2,13 +2,13 @@ import './UserList.css';
 
 export default function UserList({ users, sessionMembers, currentUserId, userRole }) {
   const getColor = (index) => {
-    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffa502', '#a8e6cf'];
+    const colors = ['#ff6b6b', '#4ecdc4', '#6b7280', '#ffa502', '#a8e6cf'];
     return colors[index % colors.length];
   };
 
   const getRoleIcon = (role) => {
     switch(role) {
-      case 'admin': return '👑';
+      case 'creator': return '👑';
       case 'editor': return '✏️';
       case 'viewer': return '👁️';
       default: return '👤';
@@ -17,10 +17,10 @@ export default function UserList({ users, sessionMembers, currentUserId, userRol
 
   const getRoleColor = (role) => {
     switch(role) {
-      case 'admin': return '#ff6b6b';
-      case 'editor': return '#7c3aed';
-      case 'viewer': return '#888';
-      default: return '#aaa';
+      case 'creator': return '#374151';
+      case 'editor': return '#6b7280';
+      case 'viewer': return '#9ca3af';
+      default: return '#d1d5db';
     }
   };
 

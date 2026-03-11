@@ -26,7 +26,7 @@ import './Canvas.css';
  * @param {Object}   props.socket              - Socket.io client instance
  * @param {Object}   props.sessionState        - Full session state from useSessionState
  * @param {string}   props.currentUserId       - Current user's socket ID
- * @param {string}   props.userRole            - 'admin' | 'editor' | 'viewer'
+ * @param {string}   props.userRole            - 'creator' | 'editor' | 'viewer'
  * @param {Object}   [props.selectedSmartShape] - { type, connectorStyle } from SmartShapes panel
  * @param {Function} [props.onSmartShapeCleared] - Called after a smart shape is placed
  */
@@ -587,7 +587,7 @@ export default function Canvas({
 
         <div className="tool-group">
           <span className={`role-indicator role-${userRole}`}>
-            {userRole === 'viewer' ? '👁️ View Only' : userRole === 'admin' ? '👑 Admin' : '✏️ Editor'}
+            {userRole === 'viewer' ? '👁️ View Only' : userRole === 'creator' ? '👑 Creator' : '✏️ Editor'}
           </span>
         </div>
       </div>

@@ -109,7 +109,7 @@ export default function App() {
 
   // ── Role helpers ─────────────────────────────────────────────────────────
   const userRole = sessionState.sessionMembers?.[socket?.id]?.role || 'viewer';
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'creator';
   const canEdit = userRole !== 'viewer';
 
   // ── Session handlers ─────────────────────────────────────────────────────

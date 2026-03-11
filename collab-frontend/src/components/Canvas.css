@@ -173,7 +173,7 @@ label {
   text-transform: uppercase;
 }
 
-.role-indicator.role-admin {
+.role-indicator.role-creator {
   background: #fee2e2;
   color: #991b1b;
   border-color: #fecaca;

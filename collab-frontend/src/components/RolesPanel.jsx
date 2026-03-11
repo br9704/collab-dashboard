@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './RolesPanel.css';
 
 export default function RolesPanel({ socket, users, sessionMembers }) {
@@ -10,7 +10,7 @@ export default function RolesPanel({ socket, users, sessionMembers }) {
     <div className="roles-panel">
       <div className="roles-header">
         <h3>User Roles</h3>
-        <p className="roles-help">Admin • Editor • Viewer</p>
+        <p className="roles-help">Creator • Editor • Viewer</p>
       </div>
 
       <div className="roles-list">
@@ -32,7 +32,7 @@ export default function RolesPanel({ socket, users, sessionMembers }) {
                   value={currentRole}
                   onChange={(e) => handleRoleChange(userId, e.target.value)}
                 >
-                  <option value="admin">👑 Admin</option>
+                  <option value="creator">👑 Creator</option>
                   <option value="editor">✏️ Editor</option>
                   <option value="viewer">👁️ Viewer</option>
                 </select>
@@ -44,7 +44,7 @@ export default function RolesPanel({ socket, users, sessionMembers }) {
 
       <div className="roles-info">
         <div className="role-desc">
-          <strong>Admin:</strong> Full access, manage roles
+          <strong>Creator:</strong> Full access, manage roles
         </div>
         <div className="role-desc">
           <strong>Editor:</strong> Can draw and edit

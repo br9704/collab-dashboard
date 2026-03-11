@@ -7,7 +7,7 @@
  * Base role definitions with default capabilities
  */
 export const BASE_ROLES = {
-  OWNER: 'owner',
+  CREATOR: 'creator',
   EDITOR: 'editor',
   COMMENTER: 'commenter',
   VIEWER: 'viewer'
@@ -67,7 +67,7 @@ export const PERMISSIONS = {
  * Defines which permissions each role has by default
  */
 export const ROLE_PERMISSIONS = {
-  [BASE_ROLES.OWNER]: [
+  [BASE_ROLES.CREATOR]: [
     // All permissions
     ...Object.values(PERMISSIONS)
   ],
