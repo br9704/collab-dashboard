@@ -1,12 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './SessionManager.css';
 
 export default function SessionManager({ socket, onSessionJoin }) {
   const [sessionId, setSessionId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const inputRef = useRef(null);
+
+  // Auto-focus the session input on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const handleCreate = () => {
+    if (!socket) {
+      setError('Not connected to server');
+      return;
+    }
     setLoading(true);
+    setError('');
     socket.emit('session-create', (response) => {
       if (response.sessionId) {
         onSessionJoin(response.sessionId);
@@ -17,13 +29,18 @@ export default function SessionManager({ socket, onSessionJoin }) {
 
   const handleJoin = () => {
     if (!sessionId.trim()) {
-      alert('Please enter a session ID');
+      setError('Please enter a session ID');
+      return;
+    }
+    if (!socket) {
+      setError('Not connected to server');
       return;
     }
     setLoading(true);
+    setError('');
     socket.emit('session-join', sessionId, (response) => {
       if (response.error) {
-        alert(response.error);
+        setError(response.error);
         setLoading(false);
       } else {
         onSessionJoin(response.sessionId);
@@ -37,13 +54,20 @@ export default function SessionManager({ socket, onSessionJoin }) {
         <h1>Collaborative Whiteboard</h1>
         <p>Draw together in real-time</p>
 
+        {error && (
+          <div role="alert" className="error-message">
+            {error}
+          </div>
+        )}
+
         <div className="button-group">
           <button
             onClick={handleCreate}
             disabled={loading}
             className="btn btn-primary"
+            aria-label="Create a new whiteboard session"
           >
-            {loading ? 'Creating...' : 'New Session'}
+            New Session
           </button>
         </div>
 
@@ -51,21 +75,34 @@ export default function SessionManager({ socket, onSessionJoin }) {
 
         <div className="join-group">
           <input
+            ref={inputRef}
             type="text"
             value={sessionId}
             onChange={(e) => setSessionId(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
+            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
             placeholder="Enter session ID to join"
             className="input"
+            aria-label="Session ID input - Enter an existing session ID to join"
           />
           <button
             onClick={handleJoin}
             disabled={loading}
             className="btn btn-secondary"
+            aria-label="Join the session with the provided ID"
           >
-            {loading ? 'Joining...' : 'Join'}
+            Join
           </button>
         </div>
+
+        {/* Loading overlay with spinner */}
+        {loading && (
+          <div className="loading-overlay">
+            <div className="spinner"></div>
+            <p className="loading-text">
+              {sessionId ? 'Joining session...' : 'Creating session...'}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

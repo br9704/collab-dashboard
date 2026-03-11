@@ -58,12 +58,21 @@
   background: #ffffff;
   color: #374151;
   border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .tool-button.active {
-  background: #ffffff;
+  background: #f8f8f8;
   color: #374151;
   border-color: #d1d5db;
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-button.active {
+    transform: none;
+  }
 }
 
 .tool-button:disabled {
@@ -211,6 +220,7 @@ label {
   justify-content: center;
   z-index: 500;
   pointer-events: none;
+  animation: fadeIn 300ms ease-out;
 }
 
 .overlay-message {
@@ -223,6 +233,25 @@ label {
   font-weight: 500;
   letter-spacing: 0.3px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  animation: fadeInScale 300ms ease-out;
+}
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-only-overlay,
+  .overlay-message {
+    animation: none;
+  }
 }
 
 /* Responsive design */
@@ -319,7 +348,7 @@ label {
   border-radius: 6px;
   color: #374151;
   font-size: 20px;
-  animation: pulse-border 1.2s ease-in-out infinite;
+  animation: pulse-border 1.2s ease-in-out infinite, gentle-bounce 2s ease-in-out infinite;
 }
 
 .indicator-text {
@@ -333,4 +362,23 @@ label {
 @keyframes pulse-border {
   0%, 100% { box-shadow: 0 0 0 0 rgba(107,114,128,0.4); }
   50%       { box-shadow: 0 0 0 6px rgba(107,114,128,0); }
+}
+
+@keyframes gentle-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smart-shape-active-indicator {
+    animation: none;
+  }
+}
+
+/* Accessibility: Focus-visible styles */
+.tool-button:focus-visible,
+.color-picker:focus-visible,
+.drawing-canvas:focus-visible {
+  outline: 2px solid #374151;
+  outline-offset: 2px;
 }

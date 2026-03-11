@@ -14,6 +14,37 @@ body {
   color: #1a1a1a;
 }
 
+/* Accessibility: Skip link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #374151;
+  color: white;
+  padding: 8px 16px;
+  text-decoration: none;
+  z-index: 10000;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Accessibility: Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 .app {
   width: 100%;
   height: 100vh;
@@ -78,6 +109,22 @@ body {
   font-weight: 500;
   letter-spacing: 0.2px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  animation: fadeIn 300ms ease-out;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .camera-info {
+    animation: none;
+  }
 }
 
 /* Sidebar column container */
@@ -100,6 +147,39 @@ body {
 
 .sidebar-column > * {
   pointer-events: auto;
+}
+
+/* Panel slide-in animation */
+@keyframes slideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Apply slide-in to panels (not toggles or session-info) */
+.sidebar-column > .activity-log,
+.sidebar-column > .user-list,
+.sidebar-column > .comments-panel,
+.sidebar-column > .roles-panel,
+.sidebar-column > .layers-panel,
+.sidebar-column > .advanced-permissions {
+  animation: slideInRight 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-column > .activity-log,
+  .sidebar-column > .user-list,
+  .sidebar-column > .comments-panel,
+  .sidebar-column > .roles-panel,
+  .sidebar-column > .layers-panel,
+  .sidebar-column > .advanced-permissions {
+    animation: none;
+  }
 }
 
 /* Panel toggles */
@@ -126,6 +206,13 @@ body {
   background: #f8f8f8;
   border-color: #d1d5db;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-toggle:hover {
+    transform: none;
+  }
 }
 
 .panel-toggle.activity-toggle {
@@ -145,6 +232,24 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   margin-top: auto;
   flex-shrink: 0;
+  animation: fadeInScale 250ms ease-out;
+}
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-info {
+    animation: none;
+  }
 }
 
 .session-info code {
@@ -195,6 +300,19 @@ body {
 .exit-button:hover {
   background: #fecaca;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  animation: shake 150ms ease-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-2deg); }
+  75% { transform: rotate(2deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exit-button:hover {
+    animation: none;
+  }
 }
 
 /* Session Manager Container */
@@ -325,4 +443,12 @@ body {
   border-color: #6b7280;
   color: #374151;
   font-weight: 600;
+}
+
+/* Accessibility: Focus-visible styles */
+button:focus-visible,
+.panel-toggle:focus-visible,
+.exit-button:focus-visible {
+  outline: 2px solid #374151;
+  outline-offset: 2px;
 }

@@ -34,12 +34,19 @@ import SmartShapes from './components/SmartShapes';
 import VideoEmbed from './components/VideoEmbed';
 import AdvancedPermissions from './components/AdvancedPermissions';
 
+// Toast notifications
+import { useToast } from './components/Toast';
+import ErrorBoundary from './components/ErrorBoundary';
+
 import './App.css';
 
 export default function App() {
-  const { socket, connected, error } = useSocket('http://localhost:3001');
+  const { socket, connected, error, reconnectAttempt } = useSocket('http://localhost:3001');
   const [sessionId, setSessionId] = useState(null);
   const [isJoined, setIsJoined] = useState(false);
+
+  // Toast notifications
+  const { addToast, ToastContainer } = useToast();
 
   // ── Panel visibility (existing) ──────────────────────────────────────────
   const [showComments, setShowComments] = useState(false);
@@ -75,6 +82,53 @@ export default function App() {
   const [permissionManager, setPermissionManager] = useState(null);
 
   const sessionState = useSessionState(socket, sessionId);
+
+  // ── Toast notifications for session events ────────────────────────────────
+  useEffect(() => {
+    if (!socket || !isJoined) return;
+
+    // User joined session
+    const handleUserJoined = (data) => {
+      const userName = data.name || data.userId?.slice(0, 8);
+      addToast(`${userName} joined the session`, 'info');
+    };
+
+    // User left session
+    const handleUserLeft = (data) => {
+      const userName = data.name || data.userId?.slice(0, 8);
+      addToast(`${userName} left the session`, 'info');
+    };
+
+    // Role changed
+    const handleRoleChanged = (data) => {
+      const userName = data.name || data.userId?.slice(0, 8);
+      addToast(`${userName}'s role changed to ${data.newRole}`, 'info');
+    };
+
+    // Template loaded
+    const handleTemplateLoaded = () => {
+      addToast('Template loaded successfully', 'success');
+    };
+
+    socket.on('user-joined', handleUserJoined);
+    socket.on('user-left', handleUserLeft);
+    socket.on('role-changed', handleRoleChanged);
+    socket.on('template-loaded', handleTemplateLoaded);
+
+    return () => {
+      socket.off('user-joined', handleUserJoined);
+      socket.off('user-left', handleUserLeft);
+      socket.off('role-changed', handleRoleChanged);
+      socket.off('template-loaded', handleTemplateLoaded);
+    };
+  }, [socket, isJoined, addToast]);
+
+  // ── Connection state toasts ───────────────────────────────────────────────
+  useEffect(() => {
+    if (connected && isJoined) {
+      addToast('Connected to server', 'success');
+    }
+  }, [connected, isJoined, addToast]);
 
   // ── Sprint 10-11: Undo/Redo keyboard shortcuts ───────────────────────────
   useEffect(() => {
@@ -226,19 +280,30 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* Skip to main content link for accessibility */}
+      <a href="#main-canvas" className="skip-link">
+        Skip to main content
+      </a>
+
+      {/* ARIA live region for real-time announcements */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only" id="announcements">
+        {/* Screen reader announcements will be injected here */}
+      </div>
+
       {/* Connection status banners */}
       {!connected && (
-        <div className="connection-banner disconnected">
-          Disconnected — Reconnecting…
+        <div className="connection-banner disconnected" role="alert">
+          Disconnected — Reconnecting{reconnectAttempt > 0 ? ` (attempt ${reconnectAttempt})` : '…'}
         </div>
       )}
       {error && (
-        <div className="connection-banner error">
+        <div className="connection-banner error" role="alert">
           Error: {error}
         </div>
       )}
 
-      <div className="main-container">
+      <ErrorBoundary>
+        <div className="main-container" role="main" id="main-canvas">
 
         {/* ── v4 Feature 2: Smart Shapes sidebar ─────────────────────────── */}
         {showSmartShapes && canEdit && (
@@ -265,12 +330,12 @@ export default function App() {
         </div>
 
         {/* Exit button */}
-        <button className="exit-button" onClick={handleExit}>
+        <button className="exit-button" onClick={handleExit} aria-label="Exit current session">
           Exit Session
         </button>
 
         {/* ── RIGHT SIDEBAR ──────────────────────────────────────────────── */}
-        <div className="sidebar-column">
+        <div className="sidebar-column" role="complementary" aria-label="Session controls and information">
 
           {/* User list */}
           <UserList
@@ -334,6 +399,8 @@ export default function App() {
           <button
             className="panel-toggle activity-toggle"
             onClick={() => setShowActivityLog(!showActivityLog)}
+            aria-label="Toggle activity log panel"
+            aria-expanded={showActivityLog}
             title="View session activity"
           >
             📋 Activity
@@ -343,6 +410,8 @@ export default function App() {
             <button
               className="panel-toggle"
               onClick={() => setShowComments(!showComments)}
+              aria-label="Toggle comments panel for selected stroke"
+              aria-expanded={showComments}
               title="View/add comments"
             >
               💬 Comments
@@ -353,6 +422,8 @@ export default function App() {
             <button
               className="panel-toggle"
               onClick={() => setShowRoles(!showRoles)}
+              aria-label="Toggle roles management panel"
+              aria-expanded={showRoles}
               title="Manage user roles"
             >
               👥 Roles
@@ -363,6 +434,8 @@ export default function App() {
             <button
               className="panel-toggle"
               onClick={() => setShowLayers(!showLayers)}
+              aria-label="Toggle layers management panel"
+              aria-expanded={showLayers}
               title="Manage drawing layers"
             >
               📚 Layers
@@ -374,6 +447,7 @@ export default function App() {
             <button
               className="panel-toggle v4-feature-btn"
               onClick={() => setShowTemplateManager(true)}
+              aria-label="Open template manager dialog"
               title="Load a pre-made whiteboard template"
             >
               🗂️ Templates
@@ -388,6 +462,8 @@ export default function App() {
                 setShowSmartShapes(!showSmartShapes);
                 if (showSmartShapes) setSelectedSmartShape(null);
               }}
+              aria-label="Toggle smart shapes panel"
+              aria-expanded={showSmartShapes}
               title="Smart shapes & flowchart elements"
             >
               🔷 Shapes
@@ -399,6 +475,7 @@ export default function App() {
             <button
               className="panel-toggle v4-feature-btn"
               onClick={() => setShowVideoEmbed(true)}
+              aria-label="Open video embed dialog"
               title="Embed a video on the canvas"
             >
               🎬 Video
@@ -410,6 +487,8 @@ export default function App() {
             <button
               className={`panel-toggle v4-feature-btn ${showAdvancedPermissions ? 'active-panel' : ''}`}
               onClick={() => setShowAdvancedPermissions(!showAdvancedPermissions)}
+              aria-label="Toggle advanced permissions panel"
+              aria-expanded={showAdvancedPermissions}
               title="Manage granular permissions"
             >
               🔐 Permissions
@@ -451,7 +530,8 @@ export default function App() {
           users={sessionState.users}
           currentUserId={socket?.id}
         />
-      </div>
+        </div>
+      </ErrorBoundary>
 
       {/* ── Modals / dialogs (outside main-container to avoid clipping) ──── */}
 
@@ -468,6 +548,9 @@ export default function App() {
         onClose={() => setShowVideoEmbed(false)}
         onVideoEmbed={handleVideoEmbed}
       />
+
+      {/* Toast notifications */}
+      <ToastContainer />
     </div>
   );
 }
