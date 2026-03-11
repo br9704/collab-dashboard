@@ -2,6 +2,7 @@ import './ActivityLog.css';
 
 export default function ActivityLog({ activityLog, users }) {
   const formatTime = (timestamp) => {
+    if (!timestamp) return 'Unknown';
     const now = Date.now();
     const diff = now - timestamp;
     const seconds = Math.floor(diff / 1000);
@@ -44,13 +45,13 @@ export default function ActivityLog({ activityLog, users }) {
               <div className="log-action">
                 <span className="action-label">{getActionLabel(entry.action)}</span>
                 <span className="action-user">
-                  {entry.userId.slice(0, 6)}...
+                  {entry.userId?.slice(0, 6) || 'Unknown'}...
                 </span>
               </div>
               <div className="log-time">
                 {formatTime(entry.timestamp)}
               </div>
-              {entry.details && (
+              {entry.details && typeof entry.details === 'object' && (
                 <div className="log-details">
                   {Object.entries(entry.details).map(([key, value]) => (
                     <span key={key} className="detail-item">

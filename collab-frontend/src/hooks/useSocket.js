@@ -3,11 +3,21 @@ import io from 'socket.io-client';
 
 export function useSocket(url = 'http://localhost:3001') {
   const socketRef = useRef(null);
+  const urlRef = useRef(url);
   const [connected, setConnected] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [error, setError] = useState(null);
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
 
   useEffect(() => {
+    // If URL changed, cleanup old socket and create new one
+    if (urlRef.current !== url && socketRef.current) {
+      console.log('[SOCKET] URL changed, cleaning up old socket');
+      socketRef.current.disconnect();
+      socketRef.current = null;
+      urlRef.current = url;
+    }
+
     if (!socketRef.current) {
       socketRef.current = io(url, {
         reconnection: true,
@@ -21,6 +31,7 @@ export function useSocket(url = 'http://localhost:3001') {
         console.log('[SOCKET] Connected:', socketRef.current.id);
         setConnected(true);
         setError(null);
+        setReconnectAttempt(0);
       });
 
       socketRef.current.on('disconnect', (reason) => {
@@ -28,9 +39,19 @@ export function useSocket(url = 'http://localhost:3001') {
         setConnected(false);
       });
 
+      socketRef.current.on('reconnect_attempt', (attemptNumber) => {
+        console.log(`[SOCKET] Reconnection attempt ${attemptNumber}`);
+        setReconnectAttempt(attemptNumber);
+      });
+
       socketRef.current.on('connect_error', (error) => {
         console.error('[SOCKET] Error:', error.message);
         setError(error.message);
+      });
+
+      socketRef.current.on('reconnect_failed', () => {
+        console.error('[SOCKET] Reconnection failed after max attempts');
+        setError('Unable to connect to server. Please refresh the page.');
       });
     }
 
@@ -44,6 +65,7 @@ export function useSocket(url = 'http://localhost:3001') {
     connected,
     sessionId,
     setSessionId,
-    error
+    error,
+    reconnectAttempt
   };
 }

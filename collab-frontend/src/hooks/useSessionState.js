@@ -68,9 +68,40 @@ export function useSessionState(socket, sessionId) {
   useEffect(() => {
     if (!socket || !sessionId) return;
 
+    // Remove any existing listeners to prevent duplicates
+    socket.off('user-joined');
+    socket.off('user-left');
+    socket.off('cursor-update');
+    socket.off('stroke-created');
+    socket.off('shape-created');
+    socket.off('text-created');
+    socket.off('text-updated');
+    socket.off('text-deleted');
+    socket.off('undo-applied');
+    socket.off('redo-applied');
+    socket.off('camera-updated');
+    socket.off('comment-created');
+    socket.off('comment-resolved');
+    socket.off('role-updated');
+    socket.off('tool-changed');
+    socket.off('text-formatting-updated');
+    socket.off('layer-created');
+    socket.off('layer-updated');
+    socket.off('layer-deleted');
+    socket.off('layer-order-changed');
+    socket.off('initial-layers');
+    socket.off('template-loaded');
+    socket.off('video-embed-created');
+    socket.off('video-embed-moved');
+    socket.off('video-embed-removed');
+    socket.off('permissions-snapshot');
+    socket.off('smart-shape-placed');
+    socket.off('ai-shape-accepted');
+
     // ── Join / sync ──────────────────────────────────────────────────────
     socket.on('user-joined', (data) => {
-      setUsers(data.users);
+      if (!data) return;
+      setUsers(data.users || []);
       if (data.sessionState) {
         const s = data.sessionState;
         setStrokes(s.strokes || []);
@@ -92,71 +123,85 @@ export function useSessionState(socket, sessionId) {
     });
 
     socket.on('user-left', (data) => {
-      setUsers(data.users);
-      setSessionMembers(prev => {
-        const updated = { ...prev };
-        delete updated[data.userId];
-        return updated;
-      });
-      setCursors(prev => {
-        const updated = { ...prev };
-        delete updated[data.userId];
-        return updated;
-      });
-      setUserPresence(prev => {
-        const updated = { ...prev };
-        delete updated[data.userId];
-        return updated;
-      });
+      if (!data) return;
+      setUsers(data.users || []);
+      if (data.userId) {
+        setSessionMembers(prev => {
+          const updated = { ...prev };
+          delete updated[data.userId];
+          return updated;
+        });
+        setCursors(prev => {
+          const updated = { ...prev };
+          delete updated[data.userId];
+          return updated;
+        });
+        setUserPresence(prev => {
+          const updated = { ...prev };
+          delete updated[data.userId];
+          return updated;
+        });
+      }
     });
 
     // ── Cursors ──────────────────────────────────────────────────────────
     socket.on('cursor-update', (data) => {
+      if (!data || !data.userId) return;
       setCursors(prev => ({ ...prev, [data.userId]: { x: data.x, y: data.y } }));
     });
 
     // ── Drawing ──────────────────────────────────────────────────────────
     socket.on('stroke-created', (stroke) => {
+      if (!stroke) return;
       setStrokes(prev => [...prev, stroke]);
     });
 
     socket.on('shape-created', (shape) => {
+      if (!shape) return;
       setShapes(prev => [...prev, shape]);
     });
 
     // ── Text ─────────────────────────────────────────────────────────────
     socket.on('text-created', (textBox) => {
+      if (!textBox) return;
       setTextBoxes(prev => [...prev, textBox]);
     });
 
     socket.on('text-updated', (textBox) => {
+      if (!textBox || !textBox.id) return;
       setTextBoxes(prev => prev.map(t => (t.id === textBox.id ? textBox : t)));
     });
 
     socket.on('text-deleted', (id) => {
+      if (!id) return;
       setTextBoxes(prev => prev.filter(t => t.id !== id));
     });
 
     // ── Undo/Redo ────────────────────────────────────────────────────────
     socket.on('undo-applied', (data) => {
+      if (!data || data.operationIndex === undefined) return;
       setHistoryIndex(data.operationIndex);
     });
 
     socket.on('redo-applied', (data) => {
+      if (!data || data.operationIndex === undefined) return;
       setHistoryIndex(data.operationIndex);
     });
 
     // ── Camera ───────────────────────────────────────────────────────────
     socket.on('camera-updated', (newCamera) => {
+      if (!newCamera) return;
       setCamera(newCamera);
     });
 
     // ── Comments ─────────────────────────────────────────────────────────
     socket.on('comment-created', (comment) => {
+      if (!comment) return;
       setComments(prev => [...prev, comment]);
     });
 
     socket.on('comment-resolved', (commentId) => {
+      if (!commentId) return;
       setComments(prev =>
         prev.map(c => (c.id === commentId ? { ...c, resolved: true } : c))
       );
@@ -164,6 +209,7 @@ export function useSessionState(socket, sessionId) {
 
     // ── Roles ────────────────────────────────────────────────────────────
     socket.on('role-updated', (data) => {
+      if (!data || !data.userId || !data.newRole) return;
       setSessionMembers(prev => ({
         ...prev,
         [data.userId]: { ...prev[data.userId], role: data.newRole }
@@ -171,6 +217,7 @@ export function useSessionState(socket, sessionId) {
     });
 
     socket.on('tool-changed', (data) => {
+      if (!data || !data.mode) return;
       setMode(data.mode);
     });
 
