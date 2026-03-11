@@ -202,7 +202,7 @@ export const TEMPLATES = {
         y: 30,
         width: 260,
         height: 50,
-        color: '#3F51B5',
+        color: '#4b5563',
         label: 'Header',
         layerId: 'layer-wireframe'
       },
@@ -441,3 +441,4 @@ export const createCanvasFromTemplate = (template) => {
     createdAt: new Date().toISOString()
   };
 };
+
