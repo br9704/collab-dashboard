@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './CommentsPanel.css';
 
 export default function CommentsPanel({ socket, strokeId, comments, currentUserId }) {
@@ -81,3 +81,4 @@ export default function CommentsPanel({ socket, strokeId, comments, currentUserI
     </div>
   );
 }
+

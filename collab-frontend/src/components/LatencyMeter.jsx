@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './LatencyMeter.css';
 
 export default function LatencyMeter({ socket }) {
@@ -52,3 +52,4 @@ export default function LatencyMeter({ socket }) {
     </div>
   );
 }
+

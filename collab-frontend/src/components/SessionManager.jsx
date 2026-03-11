@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './SessionManager.css';
 
 export default function SessionManager({ socket, onSessionJoin }) {
