@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './CursorPresence.css';
 
 export default function CursorPresence({ socket, cursors, users, currentUserId }) {
@@ -51,7 +51,7 @@ export default function CursorPresence({ socket, cursors, users, currentUserId }
   }, [socket, displayCursors, easeOutQuad]);
 
   const getColor = (index) => {
-    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffa502', '#a8e6cf'];
+    const colors = ['#ff6b6b', '#4ecdc4', '#6b7280', '#ffa502', '#a8e6cf'];
     return colors[index % colors.length];
   };
 

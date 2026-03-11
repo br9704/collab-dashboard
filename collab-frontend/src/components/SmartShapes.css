@@ -12,7 +12,7 @@
 .smart-shapes-header {
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 2px solid #2196F3;
+  border-bottom: 2px solid #6b7280;
 }
 
 .smart-shapes-header h3 {
@@ -49,7 +49,7 @@
 
 .category-toggle:hover {
   background: #f5f5f5;
-  color: #2196F3;
+  color: #6b7280;
 }
 
 .toggle-arrow {
@@ -97,15 +97,15 @@
 }
 
 .shape-button:hover {
-  background: #f0f7ff;
-  border-color: #2196F3;
-  color: #2196F3;
+  background: #f3f4f6;
+  border-color: #6b7280;
+  color: #6b7280;
 }
 
 .shape-button.selected {
-  background: #2196F3;
+  background: #6b7280;
   color: white;
-  border-color: #1976D2;
+  border-color: #374151;
   font-weight: 600;
 }
 
@@ -144,7 +144,7 @@
 
 .connector-toggle:hover {
   background: #f5f5f5;
-  color: #2196F3;
+  color: #6b7280;
 }
 
 .connector-toggle.expanded .toggle-arrow {
@@ -192,14 +192,14 @@
 .smart-shapes-tips {
   margin-top: 25px;
   padding: 12px;
-  background: #FFF3E0;
+  background: #f3f4f6;
   border-radius: 4px;
-  border-left: 3px solid #FF9800;
+  border-left: 3px solid #9ca3af;
 }
 
 .tips-header {
   font-weight: 600;
-  color: #E65100;
+  color: #374151;
   font-size: 13px;
   margin-bottom: 8px;
 }
@@ -208,7 +208,7 @@
   margin: 0;
   padding-left: 18px;
   font-size: 12px;
-  color: #D84315;
+  color: #6b7280;
   line-height: 1.4;
 }
 
@@ -231,3 +231,4 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+

@@ -139,9 +139,9 @@ function formatShapeName(shape) {
  * Get color based on confidence level
  */
 function getConfidenceColor(confidence) {
-  if (confidence >= 0.9) return '#4CAF50';      // Green
-  if (confidence >= 0.8) return '#8BC34A';      // Light green
-  if (confidence >= 0.7) return '#FFC107';      // Amber
-  if (confidence >= 0.6) return '#FF9800';      // Orange
-  return '#F44336';                             // Red
+  if (confidence >= 0.9) return '#374151';      // Dark grey
+  if (confidence >= 0.8) return '#4b5563';      // Medium-dark grey
+  if (confidence >= 0.7) return '#6b7280';      // Medium grey
+  if (confidence >= 0.6) return '#9ca3af';      // Light grey
+  return '#d1d5db';                             // Lightest grey
 }

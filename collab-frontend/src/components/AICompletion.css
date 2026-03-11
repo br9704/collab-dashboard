@@ -63,13 +63,13 @@
 }
 
 .suggestion-accept {
-  background: #4CAF50;
+  background: #374151;
   color: white;
 }
 
 .suggestion-accept:hover {
-  background: #45a049;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  background: #1f2937;
+  box-shadow: 0 2px 8px rgba(55, 65, 81, 0.2);
 }
 
 .suggestion-accept:active {
@@ -94,7 +94,7 @@
 .suggestion-bar {
   height: 3px;
   transition: width 0.3s ease;
-  background: #4CAF50;
+  background: #374151;
 }
 
 /* Animations */
@@ -146,3 +146,4 @@
     font-size: 12px;
   }
 }
+

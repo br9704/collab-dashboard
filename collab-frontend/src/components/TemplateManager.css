@@ -88,14 +88,14 @@
 }
 
 .category-tab:hover {
-  border-color: #2196F3;
-  color: #2196F3;
+  border-color: #6b7280;
+  color: #6b7280;
 }
 
 .category-tab.active {
-  background: #2196F3;
+  background: #6b7280;
   color: white;
-  border-color: #2196F3;
+  border-color: #6b7280;
 }
 
 /* Template grid */
@@ -120,14 +120,14 @@
 }
 
 .template-card:hover {
-  border-color: #2196F3;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+  border-color: #6b7280;
+  box-shadow: 0 2px 8px rgba(107, 114, 128, 0.15);
 }
 
 .template-card.selected {
-  border-color: #2196F3;
-  background: #F0F7FF;
-  box-shadow: 0 2px 12px rgba(33, 150, 243, 0.3);
+  border-color: #6b7280;
+  background: #f3f4f6;
+  box-shadow: 0 2px 12px rgba(107, 114, 128, 0.2);
 }
 
 .template-card-preview {
@@ -202,7 +202,7 @@
 
 .template-load-btn {
   padding: 12px 24px;
-  background: #2196F3;
+  background: #6b7280;
   color: white;
   border: none;
   border-radius: 6px;
@@ -215,8 +215,8 @@
 }
 
 .template-load-btn:hover {
-  background: #1976D2;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+  background: #374151;
+  box-shadow: 0 2px 8px rgba(107, 114, 128, 0.2);
 }
 
 .template-load-btn:active {
@@ -261,3 +261,4 @@
     transform: scale(1);
   }
 }
+

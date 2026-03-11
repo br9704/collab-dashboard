@@ -25,13 +25,13 @@
 }
 
 .video-embed-item:hover {
-  border-color: #2196F3;
+  border-color: #6b7280;
   box-shadow: 0 6px 24px rgba(33, 150, 243, 0.3);
 }
 
 .video-embed-item.dragging {
   opacity: 0.92;
-  border-color: #2196F3;
+  border-color: #6b7280;
   box-shadow: 0 8px 32px rgba(33, 150, 243, 0.4);
 }
 
@@ -115,7 +115,8 @@
   align-items: center;
   justify-content: center;
   background: #1a1a1a;
-  color: #ff9800;
+  color: #6b7280;
   font-size: 13px;
   font-weight: 500;
 }
+

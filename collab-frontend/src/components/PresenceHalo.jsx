@@ -2,7 +2,7 @@ import './PresenceHalo.css';
 
 export default function PresenceHalo({ userPresence, users }) {
   const getColor = (userId) => {
-    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffa502', '#a8e6cf'];
+    const colors = ['#ff6b6b', '#4ecdc4', '#6b7280', '#ffa502', '#a8e6cf'];
     // Hash-based color assignment: consistent color per userId
     let hash = 0;
     for (let i = 0; i < userId.length; i++) {
