@@ -1,417 +1,183 @@
-# Deployment Guide
+# Deployment
 
-> **⚠️ This document describes a deployment that is not currently possible.** It is kept as a
-> target, not as instructions. Rewritten in Sprint 6 — see [`masterplan.md`](masterplan.md).
->
-> Measured against the code as it stands:
->
-> - **`VITE_SOCKET_URL` does not exist.** The socket URL is hardcoded to `http://localhost:3001`
->   in `collab-frontend/src/App.jsx` and `src/hooks/useSocket.js`. A deployed frontend would
->   try to reach the *visitor's own* localhost.
-> - **`GET /health` does not exist.** The server has zero HTTP routes; `curl /health` returns
->   Express's default 404. Railway/Render/Fly health checks require one.
-> - **CORS is a hardcoded localhost array** in `collab-backend/server.js`. Any deployed
->   frontend is blocked.
-> - **The Supabase persistence section below was never implemented.** All state is an
->   in-memory `Map` and is lost on restart. Persistence lands in Sprint 2 via Yjs + Hocuspocus,
->   not Supabase.
-> - Serverless platforms cannot host WebSockets; the backend needs a long-lived process.
+**Accurate as of Sprint 6 (2026-08-14).** Every variable, file and endpoint named here exists
+in the repository. The previous version of this document gave instructions for
+`VITE_SOCKET_URL`, `GET /health` and Supabase persistence at a time when none of the three
+existed; it has been rewritten rather than patched.
 
-## Local Development Setup
+**What has been verified:** the frontend runs against a backend on a **non-localhost host,
+purely by changing environment variables, with no code edit** — driven with two real browsers
+over the LAN, 15/15 checks. **What has not:** nothing has been deployed to a hosting provider.
+That step needs Bruno's accounts and is deliberately the last thing in `masterplan.md`.
 
-### Prerequisites
-- Node.js 18+ installed
-- npm 9+
-- Git
+---
 
-### First-Time Setup
+## The shape of the thing
+
+```
+   browser ──── HTTPS ────▶  static frontend        (Vercel, or any CDN)
+      │
+      ├──────── WSS ──────▶  /socket.io            ┐
+      └──────── WSS ──────▶  /collaboration        ┘  ONE Node process (Fly / Railway)
+                                                       └── SQLite on a mounted volume
+```
+
+**Serverless cannot host this backend.** A collaborative session is a WebSocket that stays
+open for as long as someone is drawing; functions are billed and killed per request. The
+backend needs a long-lived process, which is why it ships as a container.
+
+Both protocols share one HTTP server on one port. That is not an accident — free tiers give
+you one always-on process, so needing two would double the cost of running this at all.
+
+---
+
+## Environment
+
+### Backend — `collab-backend/.env.example`
+
+| Variable | Default | Notes |
+|---|---|---|
+| `PORT` | `3001` | Most hosts inject this. Do not hardcode it there. |
+| `HOST` | `0.0.0.0` | **Do not set this to `localhost` in a container.** A process bound to loopback is unreachable from outside the container and the health check fails with no useful error. |
+| `CORS_ORIGIN` | the two localhost dev origins | Comma-separated. `*` allows any origin. |
+| `DATABASE_PATH` | `./data/collab.sqlite` | **Must point at a mounted volume in production.** |
+
+### Frontend — `collab-frontend/.env.example`
+
+| Variable | Default | Notes |
+|---|---|---|
+| `VITE_SOCKET_URL` | `http://localhost:3001` | Usually the only one you need. |
+| `VITE_COLLAB_URL` | derived | Escape hatch for a split deployment. |
+
+The Yjs document URL is **derived** from `VITE_SOCKET_URL`, including the `ws://` → `wss://`
+upgrade: a page served over https cannot open a `ws://` socket — the browser blocks it as
+mixed content — and that is a classic first-deploy failure.
+
+> **Vite inlines `VITE_*` at BUILD time, not runtime.** A build made with the wrong value
+> cannot be fixed by changing the environment and restarting; it has to be rebuilt. Set these
+> before `npm run build`.
+
+---
+
+## Two things that will silently lose data if you skip them
+
+**1. Mount a volume.** SQLite holds the Yjs documents *and* session membership. Container
+filesystems are ephemeral, so without a volume every deploy starts from an empty board while
+the app still reports itself healthy. `fly.toml` declares the mount; the volume itself has to
+be created once:
 
 ```bash
-# Clone or download the project
-cd collab-dashboard
+fly volumes create collab_data --size 1
+```
 
-# Backend
+**2. Run exactly one machine.** Hocuspocus keeps each document in the memory of the process
+serving it, and SQLite is a local file. Two machines would each hold their own copy of the
+same board and neither would see the other's edits — users would appear connected and silently
+diverge, which is worse than an outage because nobody notices. `fly.toml` pins one machine
+and disables scale-to-zero (scaling to zero would drop every client mid-stroke).
+
+Horizontal scaling needs a shared backend — Redis pub/sub for Hocuspocus, Postgres in place of
+SQLite — before more than one machine is safe. Not built; not claimed.
+
+---
+
+## Backend → Fly.io
+
+```bash
 cd collab-backend
-npm install
-npm run dev          # Should listen on http://localhost:3001
+fly launch --no-deploy          # rewrites app name and region in fly.toml
+fly volumes create collab_data --size 1
+fly secrets set CORS_ORIGIN=https://your-frontend.vercel.app
+fly deploy
+fly logs
+curl https://your-app.fly.dev/health
+```
 
-# In new terminal: Frontend
+`/health` returns:
+
+```json
+{ "status": "ok", "uptime": 42, "sessions": 3,
+  "documents": 1, "connections": 2, "persistence": "sqlite" }
+```
+
+`fly.toml` already points the platform health check at it.
+
+### Or any container host
+
+```bash
+docker build -t collab-backend ./collab-backend
+docker run -p 3001:3001 \
+  -e CORS_ORIGIN=https://your-frontend.example.com \
+  -e DATABASE_PATH=/data/collab.sqlite \
+  -v collab-data:/data \
+  collab-backend
+```
+
+The image runs as a non-root user and declares its own `HEALTHCHECK`.
+
+---
+
+## Frontend → Vercel
+
+```bash
 cd collab-frontend
-npm install
-npm run dev          # Should run on http://localhost:5173
-
-# Open browser: http://localhost:5173
+vercel                                   # link the project
+vercel env add VITE_SOCKET_URL           # https://your-app.fly.dev
+vercel --prod
 ```
 
-**Verify:**
-- Backend logs: `[SERVER] Listening on port 3001`
-- Frontend logs: `[SOCKET] Connected: socket_id`
-- No console errors
+`vercel.json` sets the Vite framework preset, rewrites all non-asset paths to `index.html` so
+a deep link does not 404, and marks hashed assets immutable.
+
+**Deploy the backend first.** The frontend bakes the backend URL in at build time, so it has
+to exist before you build.
 
 ---
 
-## Production Deployment (Heroku / Railway)
+## Free tier, honestly
 
-### Backend Deployment (Node.js + Socket.io)
+Bruno's decision was free-tier only (`masterplan.md`, D5). What that actually means:
 
-#### Option 1: Railway (Recommended)
-
-1. **Create Railway project**
-   - Go to [railway.app](https://railway.app)
-   - Sign in with GitHub
-   - "New Project" → "Blank Canvas"
-
-2. **Connect repository**
-   - "Add" → "GitHub Repo"
-   - Select `collab-dashboard` repo
-   - Give Railway access
-
-3. **Configure environment**
-   - Add variables:
-     - `NODE_ENV=production`
-     - `PORT=3001`
-   - Railway auto-assigns PORT; update to use env var
-
-4. **Set start command**
-   - In `collab-backend/package.json`:
-     ```json
-     "scripts": {
-       "start": "node server.js"
-     }
-     ```
-
-5. **Deploy**
-   - Railway auto-deploys on GitHub push
-   - Check logs to verify: `[SERVER] Listening on port 3001`
-
-6. **Get backend URL**
-   - Railway dashboard shows deployed URL
-   - Example: `https://collab-backend.railway.app`
-
-#### Option 2: Heroku
-
-1. **Create Heroku app**
-   ```bash
-   heroku login
-   heroku create collab-dashboard-api
-   ```
-
-2. **Push to Heroku**
-   ```bash
-   git push heroku main
-   ```
-
-3. **View logs**
-   ```bash
-   heroku logs --tail
-   ```
+- **Fly's free allowance covers a small always-on machine with a 1 GB volume.** This app fits.
+- `auto_stop_machines = false` is set deliberately. Scale-to-zero would drop every open
+  WebSocket, so a returning user finds a disconnected board. If the allowance ever forces
+  scale-to-zero back on, the first request after an idle period pays a cold start and every
+  previously-connected client has to reconnect — the CRDT will reconcile them, but it is not
+  the "always-on" experience, and the README should say so rather than imply otherwise.
+- **A free tier is not a durability guarantee.** The volume is one disk in one region with no
+  backups configured. Fine for a portfolio demo; not fine for anything that matters.
 
 ---
 
-### Frontend Deployment (React + Vite)
-
-#### Option: Vercel (Recommended)
-
-1. **Create Vercel project**
-   - Go to [vercel.com](https://vercel.com)
-   - Sign in with GitHub
-   - "New Project"
-   - Import `collab-dashboard` repo
-
-2. **Configure build**
-   - Framework: **Vite**
-   - Build command: `npm run build`
-   - Output directory: `dist`
-   - Root directory: `collab-frontend`
-
-3. **Set environment variables**
-   - `VITE_SOCKET_URL=https://collab-backend.railway.app` (your backend URL)
-
-4. **Deploy**
-   - Vercel auto-deploys on GitHub push
-   - Shows deployment URL
-
-5. **Connect custom domain (optional)**
-   - DNS settings → Add domain to Vercel
-
----
-
-## Environment Variables
-
-### Backend (.env)
-```
-NODE_ENV=production
-PORT=3001
-SOCKET_TIMEOUT=60000
-```
-
-### Frontend (.env or hardcoded)
-```
-VITE_SOCKET_URL=https://your-backend-url.railway.app
-```
-
-Update in `collab-frontend/src/hooks/useSocket.js`:
-```javascript
-export function useSocket(url = process.env.VITE_SOCKET_URL || 'http://localhost:3001') {
-  // ...
-}
-```
-
----
-
-## CORS Configuration
-
-Backend already configured to accept:
-- `http://localhost:5173` (dev)
-- `http://localhost:3000` (dev alternative)
-- Update in `server.js` for production:
-
-```javascript
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: [
-      'https://your-frontend-domain.vercel.app',
-      'https://your-custom-domain.com'
-    ],
-    methods: ['GET', 'POST']
-  }
-});
-```
-
----
-
-## Multi-Server Scaling (Optional)
-
-For 100+ concurrent users, add **Redis pub/sub:**
-
-### Add Redis to Railway
-
-1. Railway dashboard → "+ Create" → "Redis"
-2. Get connection URL from Railway
-
-### Update Backend
+## Verifying a deployment
 
 ```bash
-npm install redis
+# 1. the backend is up and reports its real state
+curl https://your-app.fly.dev/health
+
+# 2. CORS is configured for the frontend you actually deployed
+curl -i -H "Origin: https://your-frontend.vercel.app" \
+     https://your-app.fly.dev/health | grep -i access-control-allow-origin
+
+# 3. an unexpected origin gets NO header back (the browser then blocks it)
+curl -i -H "Origin: https://not-your-site.example" \
+     https://your-app.fly.dev/health | grep -i access-control-allow-origin
+
+# 4. persistence is real: draw something, then
+fly apps restart your-app
+#    reload the board. If it is empty, the volume is not mounted.
 ```
 
-In `server.js`:
-```javascript
-const { createAdapter } = require('@socket.io/redis-adapter');
-const redis = require('redis');
-
-const pubClient = redis.createClient({
-  url: process.env.REDIS_URL
-});
-const subClient = pubClient.duplicate();
-
-io.adapter(createAdapter(pubClient, subClient));
-```
-
-This enables multiple backend instances to share socket connections.
+Step 4 is the one people skip, and it is the one that catches a missing volume — which
+otherwise looks exactly like a working deployment until the first redeploy.
 
 ---
 
-## Monitoring & Logging
+## Local development
 
-### Backend Logs
-- Railway/Heroku shows server logs automatically
-- Monitor for:
-  - `[SERVER] Listening on port 3001`
-  - `[CONNECT] User socket_id`
-  - `[SESSION] Created: sess_abc123`
-  - `[ERROR]` messages
-
-### Frontend Error Tracking (Optional)
-- Add Sentry or LogRocket for client-side errors
-- Monitor network latency metrics
-- Track user engagement
-
-### Health Check
 ```bash
-# Test backend is running
-curl https://your-backend-url.railway.app/health
-# (add health endpoint in server.js if needed)
+npm install     # installs both workspaces
+npm run dev     # backend :3001, frontend :5173
 ```
 
----
-
-## Database Persistence (Optional)
-
-### Add Supabase for Session Saving
-
-1. **Create Supabase project** - [supabase.com](https://supabase.com)
-
-2. **Create table**
-   ```sql
-   CREATE TABLE sessions (
-     id TEXT PRIMARY KEY,
-     name TEXT,
-     creator_id TEXT,
-     created_at TIMESTAMP,
-     updated_at TIMESTAMP,
-     strokes JSONB[] DEFAULT ARRAY[]::JSONB[],
-     shapes JSONB[] DEFAULT ARRAY[]::JSONB[],
-     textBoxes JSONB[] DEFAULT ARRAY[]::JSONB[],
-     mode TEXT DEFAULT 'pencil',
-     is_active BOOLEAN DEFAULT true
-   );
-   ```
-
-3. **Backend integration**
-   ```bash
-   npm install @supabase/supabase-js
-   ```
-   
-   In `server.js`:
-   ```javascript
-   const { createClient } = require('@supabase/supabase-js');
-   const supabase = createClient(
-     process.env.SUPABASE_URL,
-     process.env.SUPABASE_KEY
-   );
-   
-   // On session-create: INSERT into sessions
-   // On stroke-draw: UPDATE sessions.strokes[]
-   ```
-
-4. **Environment variables**
-   ```
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_KEY=your_anon_key
-   ```
-
----
-
-## CI/CD Pipeline (GitHub Actions)
-
-### Automated Tests & Deploy
-
-Create `.github/workflows/deploy.yml`:
-```yaml
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  test-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      
-      - name: Install & Test Backend
-        run: |
-          cd collab-backend
-          npm install
-          npm run test  # Add tests later
-      
-      - name: Install & Build Frontend
-        run: |
-          cd collab-frontend
-          npm install
-          npm run build
-      
-      - name: Deploy to Railway/Vercel
-        # Auto-deploys via GitHub integration
-```
-
----
-
-## Performance Checklist
-
-- [ ] Bundle size <800 KB (Vite build analyzer)
-- [ ] Lighthouse score ≥80
-- [ ] <100ms cursor latency on production network
-- [ ] <200ms shape sync latency
-- [ ] ≥60 FPS during active drawing
-- [ ] No memory leaks (test 1+ hour session)
-- [ ] Auto-reconnection works after 5s disconnect
-- [ ] Handles 10+ concurrent users smoothly
-
----
-
-## Troubleshooting
-
-### "Cannot GET /" on backend
-- Backend doesn't serve HTTP, only WebSocket
-- That's expected; use frontend URL
-
-### "Connection refused" frontend to backend
-- Check backend is running
-- Verify `VITE_SOCKET_URL` matches backend URL
-- Check CORS origin is whitelisted
-
-### "Socket connection timeout"
-- Check network connectivity
-- Verify WebSocket not blocked by firewall/proxy
-- Test with Socket.io polling transport fallback
-
-### High latency (>500ms)
-- Check network throttling (DevTools)
-- May be geographic distance (use regional servers)
-- Check backend CPU/memory (may need scaling)
-
-### Memory leak / growing usage
-- Likely sessions not cleaning up properly
-- Check disconnect handler removing cursors/users
-- Monitor with `ps aux | grep node`
-
----
-
-## Rollback Plan
-
-### If deployment fails:
-
-1. **Revert GitHub commit**
-   ```bash
-   git revert <commit-hash>
-   git push
-   ```
-
-2. **Railway/Vercel auto-redeploys** from latest commit
-
-3. **Previous version restored** within 2-5 minutes
-
----
-
-## Maintenance
-
-### Regular Tasks
-- [ ] Monitor error logs weekly
-- [ ] Check latency metrics
-- [ ] Update dependencies monthly: `npm outdated`
-- [ ] Review security advisories: `npm audit`
-- [ ] Test reconnection handling monthly
-
-### Upgrade Node/Dependencies
-```bash
-# Check for updates
-npm outdated
-
-# Update safely
-npm update --depth=2
-
-# Test locally first
-npm run dev
-```
-
----
-
-## Success Metrics
-
-After deployment, track:
-- **Uptime:** Target 99%+
-- **Latency:** <100ms cursor, <200ms shapes
-- **Users:** How many concurrent users supported
-- **Errors:** <0.1% error rate
-- **Performance:** ≥60 FPS sustained
-
----
-
-Built by Claude Code for Bruno Jaamaa
-Production-ready collaborative whiteboard
+No `.env` is needed locally; every default is the development value.

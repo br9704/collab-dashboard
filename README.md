@@ -28,7 +28,9 @@ These are measured, not suspected. Each links to the sprint that closes it.
 | ~~Template connectors not drawn~~ | ~~flowcharts loaded as unconnected boxes~~ | **fixed, Sprint 4** |
 | ~~Export not wired up~~ | ~~the export dialog did nothing~~ | **fixed, Sprint 4** |
 | ~~All state in memory; sessions deleted when the last user leaves~~ | ~~nothing survived a restart~~ | **fixed, Sprint 2** |
-| Socket URL and CORS origins are hardcoded to `localhost` | Cannot be deployed anywhere yet | Sprint 6 |
+| ~~Socket URL and CORS hardcoded to `localhost`~~ | ~~could not be deployed anywhere~~ | **fixed, Sprint 6** |
+| Not deployed anywhere yet | No live URL — needs the owner's hosting accounts | Sprint 8 |
+| Single machine only | Documents live in one process's memory; horizontal scaling needs Redis + Postgres | open, documented |
 | ~~Zero tests~~ | ~~no regression safety~~ | **fixed, Sprint 5 — 95 tests** |
 | ~~UI unstyled; panels overlap~~ | ~~read as unfinished~~ | **fixed, Sprint 4** |
 | Synchronised camera has no UI | Peers publish their camera; nothing consumes it | open |
@@ -136,9 +138,18 @@ npm run dev --workspace collab-backend
 npm run dev --workspace collab-frontend
 ```
 
-The backend reads `PORT` from the environment (default `3001`) and writes its SQLite
-database to `collab-backend/data/` (override with `DATABASE_PATH`). The socket and document
-URLs are still hardcoded to localhost — see Sprint 6.
+No `.env` is needed locally — every default is the development value.
+
+To point the frontend at a backend somewhere else, set **one** variable and rebuild:
+
+```bash
+VITE_SOCKET_URL=https://your-backend.fly.dev npm run build
+```
+
+The Yjs document URL is derived from it, including the `ws://` → `wss://` upgrade an https
+page requires. On the backend, `CORS_ORIGIN` takes a comma-separated list of allowed origins.
+Full details, and the two mistakes that silently lose data, are in
+[DEPLOYMENT.md](DEPLOYMENT.md).
 
 Endpoints: `GET /health` reports uptime, session count and live document/connection counts;
 the Yjs document server is at `ws://<host>/collaboration`.

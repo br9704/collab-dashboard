@@ -18,6 +18,7 @@ import { useSessionState } from './hooks/useSessionState';
 import { useCollabDoc } from './hooks/useCollabDoc';
 import { SessionPermissionManager, BASE_ROLES } from './utils/permissions';
 import { getClientId } from './collab/identity';
+import { SOCKET_URL, COLLAB_URL } from './config';
 
 import SessionManager from './components/SessionManager';
 import Canvas from './components/Canvas';
@@ -36,9 +37,6 @@ import AdvancedPermissions from './components/AdvancedPermissions';
 import { useToast } from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 
-
-const SOCKET_URL = 'http://localhost:3001';
-const COLLAB_URL = 'ws://localhost:3001/collaboration';
 
 export default function App() {
   const { socket, connected, error, reconnectAttempt } = useSocket(SOCKET_URL);

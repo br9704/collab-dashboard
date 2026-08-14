@@ -1,0 +1,56 @@
+# ── Fly.io ───────────────────────────────────────────────────────────────────
+# Chosen because a WebSocket backend needs a process that stays alive, and Fly's
+# free allowance gives one with a persistent volume attached.
+#
+# `fly launch --no-deploy` will rewrite app/primary_region — that is expected.
+
+app = "collab-dashboard-backend"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3001"
+  HOST = "0.0.0.0"
+  DATABASE_PATH = "/data/collab.sqlite"
+
+# WITHOUT THIS MOUNT, EVERY DEPLOY WIPES EVERY BOARD.
+# The container filesystem is ephemeral; SQLite holds both the Yjs documents and
+# session membership, so persistence is only real if this volume is real.
+#   fly volumes create collab_data --size 1
+[[mounts]]
+  source = "collab_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+
+  # A collaborative session is a live WebSocket. Scaling to zero would drop every
+  # connected client mid-stroke, so the machine is left running.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 200
+    hard_limit = 250
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+# ONE MACHINE ONLY, deliberately.
+# Hocuspocus keeps each document in the memory of the process serving it, and
+# SQLite is a local file. Two machines would each hold their own copy of the same
+# board and neither would see the other's edits. Horizontal scaling needs a shared
+# backend (Redis pub/sub) first — see masterplan.md.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1

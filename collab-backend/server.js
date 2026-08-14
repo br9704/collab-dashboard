@@ -29,13 +29,31 @@ const store = require('./store');
 const { createDocServer, COLLAB_PATH } = require('./collab-doc');
 require('dotenv').config();
 
+/**
+ * Allowed origins.
+ *
+ * This used to be the literal array ['http://localhost:5173', 'http://localhost:3000'],
+ * which blocked every deployed frontend outright. Comma-separated, and `*` is accepted for
+ * a genuinely public deployment.
+ *
+ * Defaulting to the local dev origins keeps `npm run dev` working with no .env at all —
+ * a config change should not be the price of running the thing locally.
+ */
+const DEFAULT_ORIGINS = ['http://localhost:5173', 'http://localhost:3000'];
+
+const CORS_ORIGIN = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+  : DEFAULT_ORIGINS;
+
+const allowAnyOrigin = CORS_ORIGIN.includes('*');
+
 const app = express();
-app.use(cors());
+app.use(cors({ origin: allowAnyOrigin ? true : CORS_ORIGIN }));
 
 const server = createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    origin: allowAnyOrigin ? true : CORS_ORIGIN,
     methods: ['GET', 'POST']
   },
   transports: ['websocket', 'polling'],
@@ -44,6 +62,7 @@ const io = new SocketIOServer(server, {
 });
 
 const PORT = process.env.PORT || 3001;
+const HOST = process.env.HOST || '0.0.0.0';
 
 // ==========================================
 // Yjs document server
@@ -356,10 +375,18 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`[SERVER]  Listening on ${PORT}`);
-  console.log(`[DOC]     Yjs/Hocuspocus at ws://localhost:${PORT}${COLLAB_PATH}`);
+/**
+ * Bind to 0.0.0.0 by default, not localhost.
+ *
+ * Every container platform routes traffic to the container's external interface; a process
+ * listening only on the loopback address is unreachable from outside it and the health check
+ * fails with no useful error. Overridable via HOST for the rare case that matters.
+ */
+server.listen(PORT, HOST, () => {
+  console.log(`[SERVER]  Listening on ${HOST}:${PORT}`);
+  console.log(`[DOC]     Yjs/Hocuspocus at ${COLLAB_PATH}`);
   console.log(`[STORE]   SQLite at ${store.DB_PATH} — sessions and documents survive restart`);
+  console.log(`[CORS]    ${allowAnyOrigin ? 'any origin (*)' : CORS_ORIGIN.join(', ')}`);
   console.log(`[HEALTH]  GET /health`);
 });
 

@@ -162,10 +162,23 @@ The offline clause deferred from Sprint 2 is closed: one browser goes offline, k
 another edits concurrently, and both converge with nothing clobbered. Note the honest scope —
 IndexedDB caches the *document*, not the app shell; there is no service worker.
 
-Still open: undeployable — hardcoded localhost URLs (Sprint 6); no demo GIF or measured
-deployed latency (Sprint 7); commits authored by "Subagent", and CI has never actually run on
+**Sprint 6 closed — it can be deployed.** Verified by running the whole stack on the LAN with
+**only environment variables changed and not one line of source edited**: backend on
+`0.0.0.0:3001` reachable at `192.168.1.111`, frontend built with `VITE_SOCKET_URL` pointing
+at it, two real browsers driving it 15/15. CORS is genuinely enforced — the allowed origin
+gets the header, a disallowed one gets none, on both the HTTP and socket.io surfaces.
+
+One variable does it: the Yjs document URL is derived from `VITE_SOCKET_URL`, `ws://` → `wss://`
+included. `fly.toml` carries the two decisions that would otherwise lose data silently — a
+mounted volume, and exactly one machine (documents live in the serving process's memory, so
+two machines would diverge while both looked healthy). `DEPLOYMENT.md` was rewritten, not
+patched; the old one documented three things that did not exist.
+
+Still open: no demo GIF, and the "50–80ms sync" claim still unmeasured on a real network
+(Sprint 7); nothing actually deployed, commits authored by "Subagent", and CI has never run on
 GitHub because nothing is pushed (Sprint 8, owner-gated). Synchronised camera is published
-over Awareness but nothing consumes it.
+over Awareness but nothing consumes it. Horizontal scaling is unsupported and documented as
+such.
 
 Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 

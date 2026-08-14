@@ -10,7 +10,7 @@ with a one-line reason).
 **Rule:** never delete or rewrite content in this file. Expand it in place — add sub-tasks,
 file paths, edge cases, findings. Deepen, don't replace.
 
-**Current sprint pointer:** → Sprint 6 (Sprints 0–5 closed 2026-08-14)
+**Current sprint pointer:** → Sprint 7 (Sprints 0–6 closed 2026-08-14)
 
 ---
 
@@ -680,26 +680,85 @@ persistence gate started failing on a board that should have been restored.
 
 ---
 
-## Sprint 6 — Deploy readiness (no spend)
+## Sprint 6 — Deploy readiness (no spend) ✅ CLOSED 2026-08-14
 
 **Intent:** make it deployable anywhere. Everything short of the button that needs Bruno.
 
-- [ ] `VITE_SOCKET_URL` replacing the hardcoded literal at `App.jsx:44` and the default at
+- [x] `VITE_SOCKET_URL` replacing the hardcoded literal at `App.jsx:44` and the default at
       `useSocket.js:11`. A deployed frontend currently tries to reach the *visitor's own*
       localhost.
-- [ ] `CORS_ORIGIN` env var replacing the hardcoded array at `server.js:15`.
-- [ ] `GET /health` — there are currently zero HTTP routes, and every host's health check
+- [x] `CORS_ORIGIN` env var replacing the hardcoded array at `server.js:15`.
+- [x] `GET /health` — there are currently zero HTTP routes, and every host's health check
       requires one. (`server.js:23` already reads `process.env.PORT` correctly.)
-- [ ] `.env.example` on both sides.
-- [ ] `Dockerfile` + `fly.toml` for the backend; `vercel.json` for the frontend.
-- [ ] Rewrite `DEPLOYMENT.md` against what actually exists, noting that serverless cannot
+- [x] `.env.example` on both sides.
+- [x] `Dockerfile` + `fly.toml` for the backend; `vercel.json` for the frontend.
+- [x] Rewrite `DEPLOYMENT.md` against what actually exists, noting that serverless cannot
       host WebSockets and that a free-tier backend may cold-sleep (D5).
 
 **Gate:** the frontend runs against a backend on a non-localhost host purely by changing env
 vars — verified on the LAN, no code edit.
 
-**As-shipped delta:** _(fill at close)_
-**Deferred:** _(fill at close)_
+**Verification — PASSED 2026-08-14.**
+
+Backend started with **only environment variables changed**:
+`CORS_ORIGIN=http://192.168.1.111:4173 DATABASE_PATH=… HOST=0.0.0.0 node server.js`
+→ `[SERVER] Listening on 0.0.0.0:3001`, reachable at `http://192.168.1.111:3001/health`.
+
+Frontend built with **only an environment variable changed**:
+`VITE_SOCKET_URL=http://192.168.1.111:3001 npx vite build` → the LAN address is baked into
+the bundle (`grep` confirms it in `dist/assets/*.js`), served on `0.0.0.0:4173`.
+
+**Two real browsers driven against `http://192.168.1.111:4173` — 15/15.** Creator draws,
+`ONLINE (2)`, stroke crosses windows, remote cursor renders, Ctrl+Z clears both, no console
+errors. **Not one line of source was edited to move the app off localhost.**
+
+CORS is genuinely enforced rather than merely read:
+
+```
+allowed origin      → Access-Control-Allow-Origin: http://192.168.1.111:4173
+disallowed origin   → (no header — the browser blocks it)
+socket.io handshake → header present for the allowed origin, absent for the disallowed one
+```
+
+Regressions after the change: unit 95/95, and all six e2e gates green on the default local
+stack (two-window 15/15 · persistence 9/9 · CRDT permissions 9/9 · features 11/11 · motion
+12/12 · offline 8/8).
+
+**As-shipped delta:**
+- **One variable, not two.** The Yjs document URL is derived from `VITE_SOCKET_URL`,
+  including the `ws://` → `wss://` upgrade — a page served over https cannot open a `ws://`
+  socket, and that mixed-content block is a classic first-deploy failure.
+  `VITE_COLLAB_URL` remains as an escape hatch for a split deployment.
+- **`HOST` defaults to `0.0.0.0`, not localhost.** Every container platform routes to the
+  container's external interface; a process bound to loopback is unreachable from outside it
+  and the health check fails with no useful error.
+- **The defaults still run locally with no `.env` at all.** Requiring configuration to run
+  the thing on your own machine is a tax on every future contributor.
+- `fly.toml` carries the two decisions that would otherwise silently lose data, with the
+  reasoning in-file: a **mounted volume** (SQLite holds documents *and* membership, and a
+  container filesystem is ephemeral, so without it every deploy starts from an empty board
+  while still reporting healthy), and **exactly one machine** (Hocuspocus keeps each document
+  in the memory of the process serving it; two machines would each hold their own copy of the
+  same board and neither would see the other's edits — users would appear connected and
+  silently diverge, which is worse than an outage because nobody notices).
+- `auto_stop_machines = false`: scaling to zero would drop every open WebSocket mid-stroke.
+- The Dockerfile runs as non-root and declares its own `HEALTHCHECK`; `better-sqlite3` is
+  native, so the build image carries the toolchain needed if no prebuilt binary matches.
+- `DEPLOYMENT.md` **rewritten, not patched**. The old one gave instructions for
+  `VITE_SOCKET_URL`, `GET /health` and Supabase persistence at a time when none existed.
+  The new one states plainly what is verified (LAN, env-only) and what is not (nothing has
+  been deployed anywhere), and includes a restart-the-app check because a missing volume
+  looks exactly like a working deployment until the first redeploy.
+
+**Deferred:**
+- **Nothing has been deployed.** This sprint makes deployment possible; performing it needs
+  Bruno's accounts and is Sprint 8 by design (D7).
+- **Horizontal scaling is not supported** and is not claimed. It needs Redis pub/sub for
+  Hocuspocus and Postgres in place of SQLite. Written down in `DEPLOYMENT.md` so the
+  single-machine constraint is a stated design limit rather than a lurking surprise.
+- No CDN/asset budget, no rate limiting, no auth. The client id identifies a *browser*, not a
+  person; anyone with a session id can open a board as a viewer. Fine for a portfolio demo,
+  stated rather than implied.
 
 ---
 

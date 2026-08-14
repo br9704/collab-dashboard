@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
+// The default lives in one place. It used to be a second hardcoded copy of
+// 'http://localhost:3001', which meant fixing the URL in App.jsx alone left a stale
+// fallback behind.
+import { SOCKET_URL as DEFAULT_SOCKET_URL } from '../config';
 
 /**
  * useSocket — manages a persistent Socket.io connection with automatic reconnection.
  * Handles connect/disconnect/error events and exposes connection state.
  *
- * @param {string} [url='http://localhost:3001'] - Socket.io server URL
+ * @param {string} [url] - Socket.io server URL; defaults to VITE_SOCKET_URL
  * @returns {{ socket: Object|null, connected: boolean, error: string|null, reconnectAttempt: number }}
  */
-export function useSocket(url = 'http://localhost:3001') {
+export function useSocket(url = DEFAULT_SOCKET_URL) {
   const socketRef = useRef(null);
   const urlRef = useRef(url);
   const [connected, setConnected] = useState(false);
