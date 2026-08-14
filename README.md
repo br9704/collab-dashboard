@@ -6,12 +6,11 @@ Socket.io on the back. Sessions, live cursors, shared strokes, roles, comments.
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 > **Status: under active repair.**
-> The core journey works as of Sprint 1 — two people can open one board and draw together,
-> with live cursors, correct roles and working undo, verified in two real browser windows.
-> What remains is listed below: nothing persists across a restart, several UI features are
-> not wired to the server, and it cannot yet be deployed. The specific defects are
-> listed in [Known issues](#known-issues) below and are being worked in the order set by
-> [`masterplan.md`](masterplan.md). This section will shrink as sprints close.
+> Two people can open one board and draw together — live cursors, correct roles, working
+> undo — and **the board survives a server restart**. Verified in real browser windows
+> against a real process kill. What remains is listed below: several UI features are still
+> not wired to the server, and it cannot yet be deployed. Work follows
+> [`masterplan.md`](masterplan.md); this section shrinks as sprints close.
 
 ---
 
@@ -26,8 +25,8 @@ These are measured, not suspected. Each links to the sprint that closes it.
 | ~~bare `socket.off(event)` unhooks other components~~ | ~~remote cursors silently stopped rendering~~ | **fixed, Sprint 1** |
 | ~~`Session.undo()` only moves an index~~ | ~~Ctrl+Z changed a number; no ink disappeared~~ | **fixed, Sprint 1** |
 | 13 client events have no server handler | Templates, Smart Shapes, Layers, Text Formatting and Video Embed do nothing at all | Sprint 3 |
-| All state is `new Map()` in memory, and sessions are deleted when the last user leaves | **Nothing survives a restart**, and it cannot scale past one process | Sprint 2 |
-| Socket URL and CORS origins are hardcoded to `localhost`; there are zero HTTP routes | Cannot be deployed anywhere | Sprint 6 |
+| ~~All state in memory; sessions deleted when the last user leaves~~ | ~~nothing survived a restart~~ | **fixed, Sprint 2** |
+| Socket URL and CORS origins are hardcoded to `localhost` | Cannot be deployed anywhere yet | Sprint 6 |
 | Zero tests | No regression safety | Sprint 5 |
 | UI is unstyled against the project's design system | Reads as unfinished; panels overlap | Sprint 4 |
 
@@ -35,13 +34,22 @@ These are measured, not suspected. Each links to the sprint that closes it.
 
 ## What actually works today
 
-Verified by running the server and driving it with scripted socket clients:
+Verified by running the server and driving it with scripted clients and real browsers:
 
-- **16 socket handlers** — session create/join, cursor-move, camera-change, stroke-draw,
-  shape-draw, text add/update/delete, undo, redo, comment add/resolve, role-change,
-  latency-ping, disconnect.
-- **A real role/permission model** — `collab-backend/roles.js` plus 388 LOC of client-side
-  permission logic. Every mutating socket handler checks it before acting.
+- **A collaborative board that persists.** Strokes, shapes, text and comments live in a Yjs
+  (CRDT) document served by Hocuspocus and stored in SQLite. Kill the server, start it again,
+  reopen the id — the board is still there. Concurrent edits merge rather than clobber.
+- **Live presence** — cursors, camera and "who is drawing" ride the Yjs Awareness protocol.
+  Ephemeral by design: presence is about who is here *now*, and is never written to disk.
+- **Offline read** — `y-indexeddb` caches the document locally, so a board renders before the
+  network answers. (Editing *while* offline and reconciling is wired but not yet verified —
+  see Sprint 5.)
+- **Per-user undo** — a `Y.UndoManager` scoped to your own edits. Ctrl+Z undoes *your* last
+  action, not whatever happened most recently on the board.
+- **A role model enforced at the connection, not in the UI** — `collab-backend/roles.js`.
+  Viewers get a read-only document connection, so a viewer writing straight into the CRDT and
+  bypassing the interface entirely is rejected server-side. Tokens are refused for
+  non-members and for a different board than the one they were minted for.
 - **Shape recognition** — `collab-frontend/src/utils/shapeRecognition.js`, 447 LOC of
   geometric heuristics that snap a rough stroke to a clean rectangle, circle, line, triangle,
   diamond or arrow. **This is geometry, not machine learning.** It was previously described
@@ -70,7 +78,9 @@ been taken yet. No sync-latency number is claimed here until it has been.
 | Drawing | Canvas 2D API |
 | Transport | Socket.io 4.8 (client + server) |
 | Server | Express 5, Node 22+ |
-| State | In-memory `Map` — **not persistent**, see Sprint 2 |
+| Document | Yjs 13 (CRDT) via Hocuspocus 4 |
+| Persistence | SQLite (`better-sqlite3`) — documents, sessions and roles |
+| Offline | IndexedDB via `y-indexeddb` |
 
 ---
 
@@ -88,8 +98,12 @@ npm run dev --workspace collab-backend
 npm run dev --workspace collab-frontend
 ```
 
-The backend reads `PORT` from the environment (default `3001`). Everything else is still
-hardcoded to localhost — see Sprint 6.
+The backend reads `PORT` from the environment (default `3001`) and writes its SQLite
+database to `collab-backend/data/` (override with `DATABASE_PATH`). The socket and document
+URLs are still hardcoded to localhost — see Sprint 6.
+
+Endpoints: `GET /health` reports uptime, session count and live document/connection counts;
+the Yjs document server is at `ws://<host>/collaboration`.
 
 ---
 
@@ -97,14 +111,17 @@ hardcoded to localhost — see Sprint 6.
 
 ```
 collab-dashboard/
-├── collab-backend/          Express 5 + Socket.io  (1,056 LOC)
-│   ├── server.js            16 socket handlers, in-memory session store
+├── collab-backend/          Express 5 + Socket.io + Hocuspocus
+│   ├── server.js            control plane: sessions, roles, activity, /health
+│   ├── collab-doc.js        Yjs document server + connection-level permissions
+│   ├── store.js             SQLite: sessions and membership
 │   └── roles.js             role hierarchy + permission matrix
 ├── collab-frontend/         React 19 + Vite 7      (6,330 LOC)
 │   └── src/
 │       ├── App.jsx          session orchestration
+│       ├── collab/          document model + stable browser identity
 │       ├── components/      Canvas, UserList, CursorPresence, panels
-│       ├── hooks/           useSocket, useSessionState
+│       ├── hooks/           useSocket, useSessionState, useCollabDoc
 │       └── utils/           permissions, shapeRecognition, shapeUtils
 ├── masterplan.md            sequencing — the source of truth for what happens next
 ├── CLAUDE.md                project rules

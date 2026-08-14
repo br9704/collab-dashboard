@@ -112,10 +112,24 @@ carried the right answer. Three further blockers found and fixed along the way:
 place it was shown, so nobody could join; and the canvas bitmap was sized from the window
 rather than its own box, so ink landed offset from the pointer.
 
-Still open: nothing persists across a restart (Sprint 2), 13 client events have no server
-handler (Sprint 3), UI unstyled against SIGNAL with overlapping panels (Sprint 4), zero tests
-(Sprint 5), undeployable — hardcoded localhost, no `/health` (Sprint 6), commits authored by
-"Subagent" (Sprint 8, owner-gated).
+**Sprint 2 closed — the board persists.** Strokes, shapes, text and comments moved into a
+Yjs document served by Hocuspocus 4 and stored in SQLite; cursors/camera/drawing-state moved
+to Awareness (ephemeral by design); sessions and roles persist in SQLite. Proved by killing
+the server process and starting a new one: 1,670 px of ink restored exactly, in a browser
+profile with an empty IndexedDB. The role model is enforced **at the connection** — a viewer
+holding a valid token can read the document but its writes are rejected server-side, verified
+by driving the wire protocol with no UI involved. `GET /health` and `GET /` shipped early.
+
+Two things the gate itself uncovered: membership was keyed by `socket.id`, so persisted roles
+could never be reclaimed (a creator reloading came back as a viewer) — fixed with a stable
+per-browser client id; and Hocuspocus 4 runs on `crossws`, so hosting it on a plain `ws`
+server requires pumping `message`/`close` in by hand, otherwise the socket opens, the client
+says "connected", and nothing ever syncs with no error at all.
+
+Still open: 13 client events have no server handler, and their panels are hidden rather than
+dead (Sprint 3); UI unstyled against SIGNAL with overlapping panels (Sprint 4); zero tests,
+and offline *write*-and-reconcile still unproven (Sprint 5); undeployable — hardcoded
+localhost URLs (Sprint 6); commits authored by "Subagent" (Sprint 8, owner-gated).
 
 Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 

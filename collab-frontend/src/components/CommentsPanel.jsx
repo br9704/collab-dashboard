@@ -2,31 +2,35 @@ import { useState } from 'react';
 import './CommentsPanel.css';
 
 /**
- * CommentsPanel — threaded comment sidebar for a selected stroke.
- * Users can add comments (Ctrl+Enter), and comment authors can resolve them.
+ * CommentsPanel — threaded comments for a selected element.
  *
- * @param {Object} props
- * @param {Object} props.socket        - Socket.io client instance
- * @param {string} props.strokeId      - ID of the stroke being commented on
- * @param {Array}  props.comments      - Array of comment objects for this stroke
- * @param {string} props.currentUserId - Current user's socket ID
+ * Comments are document state, so they live in the Y.Doc and persist with the board rather
+ * than evaporating on restart with the rest of the old in-memory session.
+ *
+ * @param {Object}   props
+ * @param {string}   props.elementId     - ID of the element being commented on
+ * @param {Array}    props.comments      - Comment objects for this element
+ * @param {string}   props.currentUserId - Current user's id
+ * @param {Function} props.onAddComment
+ * @param {Function} props.onResolveComment
  */
-export default function CommentsPanel({ socket, strokeId, comments, currentUserId }) {
+export default function CommentsPanel({
+  elementId,
+  comments,
+  currentUserId,
+  onAddComment,
+  onResolveComment,
+}) {
   const [newComment, setNewComment] = useState('');
 
   const handleAddComment = () => {
     if (!newComment.trim()) return;
-
-    socket?.emit('comment-add', {
-      strokeId,
-      text: newComment
-    });
-
+    onAddComment?.({ elementId, text: newComment });
     setNewComment('');
   };
 
   const handleResolve = (commentId) => {
-    socket?.emit('comment-resolve', commentId);
+    onResolveComment?.(commentId);
   };
 
   const unresolvedCount = comments.filter(c => !c.resolved).length;

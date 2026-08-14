@@ -1,80 +1,65 @@
-import { useEffect, useRef, useState } from 'react';
 import './CursorPresence.css';
 
 /**
- * CursorPresence — renders remote users' cursors over the canvas.
+ * CursorPresence — renders collaborators' cursors over the canvas.
  *
- * This is a PURE RENDERER. It used to own its own `cursor-update` socket listener, which
- * collided with the one in useSessionState: that hook tore listeners down with a bare
- * `socket.off('cursor-update')`, which removes *every* handler for the event, including this
- * component's. Child effects run before parent effects, so the hook always won and this
- * component's listener was silently unhooked. One listener, one owner — the hook — and this
- * component just draws what it is given.
+ * A PURE RENDERER with a single owner for its data. It used to keep its own
+ * `cursor-update` socket listener, which collided with the one in useSessionState: that hook
+ * removed listeners with a bare `socket.off('cursor-update')`, which unhooks *every* handler
+ * for the event including this component's. Child effects run before parent effects, so the
+ * hook always won and this listener was silently killed.
  *
- * Positions arrive in CANVAS space and are converted to viewport space here using the live
- * canvas rect and the local camera, so a remote cursor stays attached to the board content
- * regardless of how either side has panned or zoomed.
+ * Since Sprint 2 the data comes from Awareness peers rather than sockets. Cursor positions
+ * are ephemeral state about who is where *right now*; putting them in the persisted document
+ * would write every mouse movement to disk forever.
  *
- * Interpolation here is deliberately minimal. MOTION.md specifies 80 ms buffered, time-based
- * easing; that lands in Sprint 4 along with name chips, join rings and idle fades.
+ * Positions arrive in CANVAS space and are converted to viewport space with the canvas rect
+ * and the local camera, so a remote cursor stays attached to board content no matter how
+ * either side has panned or zoomed.
+ *
+ * Interpolation is deliberately absent here. MOTION.md specifies 80 ms buffered, time-based
+ * easing; that lands in Sprint 4 with name chips, join rings and idle fades.
  *
  * @param {Object} props
- * @param {Object} props.cursors       - Map of userId → { x, y, timestamp } in canvas space
- * @param {Array}  props.users         - Array of connected user ids (strings)
- * @param {string} props.currentUserId - Current user's socket ID (excluded from rendering)
- * @param {Object} props.camera        - { x, y, zoom } of the local view
- * @param {Object} props.canvasRef     - Ref to the <canvas> element, for its bounding rect
+ * @param {Array}  props.peers         - [{ userId, cursor: { x, y } }]
+ * @param {string} props.currentUserId
+ * @param {Object} props.camera        - local { x, y, zoom }
+ * @param {Object} props.canvasRect    - { left, top } of the canvas element
  */
-export default function CursorPresence({ cursors, users, currentUserId, camera, canvasRef }) {
-  // The canvas rect is read on a frame tick rather than per render: it changes on resize and
-  // layout, and reading it during render would thrash.
-  const [rect, setRect] = useState(null);
-  const rafRef = useRef(null);
-
-  useEffect(() => {
-    const measure = () => {
-      const el = canvasRef?.current;
-      if (el) {
-        const r = el.getBoundingClientRect();
-        setRect(prev => {
-          if (prev && prev.left === r.left && prev.top === r.top) return prev;
-          return { left: r.left, top: r.top };
-        });
-      }
-      rafRef.current = requestAnimationFrame(measure);
-    };
-    rafRef.current = requestAnimationFrame(measure);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [canvasRef]);
-
-  if (!rect || !cursors) return null;
+export default function CursorPresence({ peers, currentUserId, camera, canvasRect }) {
+  if (!canvasRect || !peers?.length) return null;
 
   const zoom = camera?.zoom ?? 1;
   const camX = camera?.x ?? 0;
   const camY = camera?.y ?? 0;
 
-  // Stable per-user shade so the same collaborator keeps the same cursor between renders.
+  // Stable per-user shade, so a collaborator keeps the same cursor between renders.
   const shadeFor = (userId) => {
-    const index = Math.max(0, (users || []).indexOf(userId));
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      hash = ((hash << 5) - hash) + userId.charCodeAt(i);
+      hash |= 0;
+    }
     const shades = ['#f0ece4', '#98928a', '#55504a', '#c9c3b8', '#7d776f'];
-    return shades[index % shades.length];
+    return shades[Math.abs(hash) % shades.length];
   };
 
   return (
     <>
-      {Object.entries(cursors).map(([userId, pos]) => {
-        if (userId === currentUserId || !pos) return null;
+      {peers.map((peer) => {
+        if (!peer.cursor || peer.userId === currentUserId) return null;
+        const x = canvasRect.left + peer.cursor.x * zoom + camX;
+        const y = canvasRect.top + peer.cursor.y * zoom + camY;
         return (
           <div
-            key={userId}
+            key={peer.clientId ?? peer.userId}
             className="cursor"
+            data-user={peer.userId}
             style={{
-              transform: `translate3d(${rect.left + pos.x * zoom + camX}px, ${rect.top + pos.y * zoom + camY}px, 0)`,
-              background: shadeFor(userId),
+              transform: `translate3d(${x}px, ${y}px, 0)`,
+              background: shadeFor(peer.userId),
             }}
-            title={userId.slice(0, 8)}
+            title={peer.userId.slice(0, 8)}
           />
         );
       })}

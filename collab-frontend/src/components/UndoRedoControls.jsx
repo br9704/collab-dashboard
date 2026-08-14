@@ -1,46 +1,36 @@
 import './UndoRedoControls.css';
 
 /**
- * UndoRedoControls — undo/redo buttons that emit socket events.
- * Disabled when at history boundaries. Also available via Ctrl+Z / Ctrl+Y.
+ * UndoRedoControls — undo/redo for the local user.
  *
- * @param {Object} props
- * @param {Object} props.socket        - Socket.io client instance
- * @param {number} props.historyIndex  - Current position in undo history
- * @param {number} props.historyLength - Total number of history entries
+ * Backed by a per-user Y.UndoManager rather than a shared server-side stack. This is a
+ * behaviour change and an intentional one: the old implementation popped one global history
+ * list, so pressing Ctrl+Z could remove a stroke another person had just drawn. Undo now
+ * affects your own last action, as it does in every real editor.
+ *
+ * @param {Object}   props
+ * @param {boolean}  props.canUndo - whether this user has anything to undo
+ * @param {boolean}  props.canRedo - whether this user has anything to redo
+ * @param {Function} props.onUndo
+ * @param {Function} props.onRedo
  */
-export default function UndoRedoControls({ socket, historyIndex, historyLength }) {
-  const canUndo = historyIndex > 0;
-  const canRedo = historyIndex < (historyLength - 1);
-
-  const handleUndo = () => {
-    if (canUndo) {
-      socket?.emit('undo');
-    }
-  };
-
-  const handleRedo = () => {
-    if (canRedo) {
-      socket?.emit('redo');
-    }
-  };
-
+export default function UndoRedoControls({ canUndo, canRedo, onUndo, onRedo }) {
   return (
     <div className="undo-redo-controls">
       <button
-        onClick={handleUndo}
+        onClick={() => canUndo && onUndo?.()}
         disabled={!canUndo}
-        title="Undo (Ctrl+Z)"
-        aria-label="Undo last action - Keyboard shortcut: Ctrl+Z or Cmd+Z"
+        title="Undo your last action (Ctrl+Z)"
+        aria-label="Undo your last action - Keyboard shortcut: Ctrl+Z or Cmd+Z"
         className="undo-button"
       >
         ↶ Undo
       </button>
-      <span className="history-info" role="status" aria-live="polite" aria-label={`History position: ${historyIndex + 1} of ${historyLength}`}>
-        {historyIndex + 1} / {historyLength}
+      <span className="history-info" role="status" aria-live="polite">
+        yours
       </span>
       <button
-        onClick={handleRedo}
+        onClick={() => canRedo && onRedo?.()}
         disabled={!canRedo}
         title="Redo (Ctrl+Y)"
         aria-label="Redo last undone action - Keyboard shortcut: Ctrl+Y or Cmd+Shift+Z"

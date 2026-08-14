@@ -18,10 +18,14 @@
   "author": "Bruno Jaamaa <jaamaabruno@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@hocuspocus/extension-sqlite": "^4.6.0",
+    "@hocuspocus/server": "^4.6.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "socket.io": "^4.8.3",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "ws": "^8.21.3",
+    "yjs": "^13.6.32"
   }
 }

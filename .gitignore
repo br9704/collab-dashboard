@@ -17,3 +17,5 @@ coverage/
 .cursor/mcp.json
 .vscode/mcp.json
 opencode.json
+collab-backend/data/
+*.sqlite*

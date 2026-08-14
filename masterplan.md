@@ -10,7 +10,7 @@ with a one-line reason).
 **Rule:** never delete or rewrite content in this file. Expand it in place — add sub-tasks,
 file paths, edge cases, findings. Deepen, don't replace.
 
-**Current sprint pointer:** → Sprint 2 (Sprints 0–1 closed 2026-08-14)
+**Current sprint pointer:** → Sprint 3 (Sprints 0–2 closed 2026-08-14)
 
 ---
 
@@ -295,31 +295,89 @@ Screenshots of both windows captured.
 
 ---
 
-## Sprint 2 — Persistence: Yjs + Hocuspocus (D1)
+## Sprint 2 — Persistence: Yjs + Hocuspocus (D1) ✅ CLOSED 2026-08-14
 
 **Intent:** close the single biggest credibility gap. Right now persistence is not merely
 absent — it is structurally impossible: sessions are **deleted when the last user leaves**
 (`server.js:867`).
 
-- [ ] Stand up `@hocuspocus/server` 4.x (Node 22+) with SQLite persistence via
+- [x] Stand up `@hocuspocus/server` 4.x (Node 22+) with SQLite persistence via
       `better-sqlite3`. Verify the current major at implementation time, not from memory.
-- [ ] Model the document: top-level `Y.Map` of elements; strokes as **immutable point arrays
+- [x] Model the document: top-level `Y.Map` of elements; strokes as **immutable point arrays
       inserted once**, never one CRDT op per point; `Y.Text` for text bodies.
-- [ ] Move cursors, camera and presence to the **Awareness protocol** — ephemeral, never in
+- [x] Move cursors, camera and presence to the **Awareness protocol** — ephemeral, never in
       the document. Keep the existing socket events for anything Awareness doesn't cover.
-- [ ] `Y.UndoManager` scoped per user, replacing the server-side history array.
-- [ ] `y-indexeddb` on the client for offline.
-- [ ] Delete the delete-on-empty branch (`server.js:867`) — it is the direct opposite of
+- [x] `Y.UndoManager` scoped per user, replacing the server-side history array.
+- [x] `y-indexeddb` on the client for offline.
+- [x] Delete the delete-on-empty branch (`server.js:867`) — it is the direct opposite of
       persistence.
-- [ ] Keep the role/permission model authoritative on the server; a CRDT does not enforce
+- [x] Keep the role/permission model authoritative on the server; a CRDT does not enforce
       permissions.
 
 **Gate:** kill the server mid-session, restart it, reload both windows — the board is still
 there · two windows converge after concurrent edits · a client edits offline and reconciles
 on reconnect · Sprint 1's two-window gate still passes.
 
-**As-shipped delta:** _(fill at close)_
-**Deferred:** _(fill at close)_
+**Verification — PASSED 2026-08-14.** Three harnesses, 33 checks, all green.
+
+*Persistence* (`persistence.cjs`, real browsers, real process kill) — **9/9**:
+draw 1,670 px of ink → `pkill` the server, confirm `/health` is unreachable → start a NEW
+process → **1,670 px restored exactly**, in a browser profile with an empty IndexedDB, so it
+can only have come from the server's SQLite. Session metadata survived. A returning browser
+keeps its stored role (`creator`); an unknown browser gets `viewer`.
+
+*CRDT permission boundary* (`crdt-permissions.cjs`, no UI at all) — **9/9**. This is the
+property a CRDT makes easy to get wrong: every connected client holds a writable handle on
+the shared type, so hiding the toolbar from viewers is decoration. Driving the wire protocol
+directly with a **valid viewer token**: the viewer can open and read the document, and its
+write is **rejected server-side** — the observer re-reading from the server sees only
+`legit-stroke`. Both token forgeries are refused with `permission-denied`: a token for a
+non-member, and a genuine token minted for a *different* board.
+
+*Sprint 1 regression* (`two-window.cjs`) — **15/15**, unchanged on the new stack.
+
+**As-shipped delta:**
+- **A blocker found by the gate itself: membership was keyed by `socket.id`.** Socket ids are
+  minted fresh on every connection, so persisted roles could never actually be reclaimed —
+  a creator reloading the page came back to their own board as a viewer, with no way to
+  regain control. Added a stable per-browser client id (`collab/identity.js`, localStorage)
+  and keyed membership on it. The persistence of roles was meaningless without this.
+- **Hocuspocus 4 runs on `crossws`, and `handleConnection` does not subscribe to the socket.**
+  Its own server pumps frames in via `peer._hocuspocus.handleMessage(...)`. Hosting it on a
+  plain `ws` server means forwarding `message` and `close` by hand, and passing a Fetch-style
+  request whose `headers` is a real `Headers`. Without that the WebSocket opens, the client
+  reports `connected`, and **nothing ever syncs — with no error at all**. Cost an hour;
+  documented at the mount so nobody pays it twice.
+- **Both transports share one HTTP server and one port.** socket.io and Hocuspocus each get
+  an `upgrade` listener; the Yjs one returns silently for paths it does not own rather than
+  destroying the socket, which would kill every socket.io connection. One process matters:
+  free-tier hosting gives you exactly one.
+- **`GET /health` and `GET /` shipped early** (they were Sprint 6 items). The server had zero
+  HTTP routes, and a health endpoint was the only way to assert "a NEW process is serving"
+  in the restart test. `/health` reports uptime, session count, live document count and
+  connection count.
+- **Undo is now per-user**, via a `Y.UndoManager` scoped to this client's transaction origin.
+  A behaviour change and an improvement: the old shared server-side stack meant Ctrl+Z could
+  remove a stroke somebody else had just drawn.
+- **Comments moved into the document**, so they persist with the board instead of evaporating
+  with the old in-memory session.
+- Text bodies are `Y.Text` and are updated by **diffing** rather than clear-and-rewrite, so
+  two people editing one text box merge instead of clobbering each other.
+- Strokes are inserted as **one operation per stroke**, never one per point — the naive
+  version produces thousands of ops per minute of drawing and the document can never be
+  compacted.
+- Panels whose events still have no server handler (Templates, Smart Shapes, Layers, Text
+  Formatting, Video, Advanced Permissions) are **hidden behind `SPRINT3_FEATURES_READY`**
+  rather than left on screen as controls that silently do nothing.
+
+**Deferred:**
+- **Offline edit-and-reconcile is not yet proven.** `y-indexeddb` is wired and the board
+  hydrates from cache before the network answers, but the gate's "edit offline, reconcile on
+  reconnect" clause was verified only as far as offline *read*. Writing while disconnected and
+  asserting convergence needs a network-interception harness → **Sprint 5**, with the tests.
+  Called out rather than quietly ticked.
+- Synchronised camera ("follow me") — the camera rides Awareness but no UI drives it → Sprint 3.
+- The activity feed is still ephemeral and is not claimed as persistent anywhere.
 
 ---
 
