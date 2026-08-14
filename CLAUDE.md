@@ -101,13 +101,21 @@ unused TypeScript dep removed, the lying "Persistence" boot banner and the no-op
 interval deleted, "AI shape completion" renamed to shape recognition throughout, README
 rewritten with a measured known-issues table.
 
-Still broken, next up in Sprint 1: the core journey. Root cause **proved** — the creator's
-VIEWER role and `ONLINE (0)` are one race (`user-joined` is broadcast before the client
-subscribes; the ack already carries the right state and is discarded). A **third blocker the
-audit missed**: `cursor-move` is never emitted by the app, so live cursors never transmit.
-Also unfixed: undo mutates nothing, 13 client events have no server handler, state is
-in-memory only, undeployable (hardcoded localhost, no `/health`), zero tests, UI unstyled
-against SIGNAL, commits authored by "Subagent".
+**Sprint 1 closed — the core journey works.** Verified in two real Chromium windows (15/15)
+and at protocol level with scripted socket clients (14/14): the creator is a `creator` and
+can draw, presence reads `ONLINE (2)`, a stroke drawn in one window renders in the other,
+remote cursors move, Ctrl+Z removes the ink in **both** windows, and there are zero console
+errors and zero failed requests. Root cause was a single race — `user-joined` broadcast
+before the client could subscribe — fixed by seeding state from the ack, which already
+carried the right answer. Three further blockers found and fixed along the way:
+`cursor-move` was never emitted by the app at all; the session id was truncated in the only
+place it was shown, so nobody could join; and the canvas bitmap was sized from the window
+rather than its own box, so ink landed offset from the pointer.
+
+Still open: nothing persists across a restart (Sprint 2), 13 client events have no server
+handler (Sprint 3), UI unstyled against SIGNAL with overlapping panels (Sprint 4), zero tests
+(Sprint 5), undeployable — hardcoded localhost, no `/health` (Sprint 6), commits authored by
+"Subagent" (Sprint 8, owner-gated).
 
 Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 

@@ -10,11 +10,28 @@
  * - Activity log (Sprint 18)
  * - v3: Text formatting, advanced layers, export
  * - v4: Templates, smart shapes, video embeds, shape recognition, permissions
+ *
+ * TWO CORRECTNESS RULES LIVE HERE — both were violated, and both caused blockers:
+ *
+ * 1. INITIAL STATE COMES FROM THE ACK, NOT FROM A BROADCAST.
+ *    The server emits `user-joined` to the room *before* invoking the session-create /
+ *    session-join ack. This effect cannot register until `sessionId` exists, and `sessionId`
+ *    only exists once that ack fires — so the broadcast always arrived with no listener
+ *    attached. The creator therefore never learned their own role (falling back to 'viewer')
+ *    and never learned the user list (rendering ONLINE (0)). Seeding from `initialSnapshot`
+ *    removes the race by construction: there is no ordering left to get wrong.
+ *
+ * 2. NEVER CALL socket.off(event) WITHOUT THE HANDLER.
+ *    Bare `socket.off('cursor-update')` removes EVERY listener for that event across the
+ *    whole app, including other components'. Every listener below is a named function and is
+ *    removed with `socket.off(event, handler)`.
  */
 
 import { useEffect, useState } from 'react';
 
-export function useSessionState(socket, sessionId) {
+const EMPTY_CAMERA = { x: 0, y: 0, zoom: 1 };
+
+export function useSessionState(socket, sessionId, initialSnapshot) {
   const [users, setUsers] = useState([]);
   const [sessionMembers, setSessionMembers] = useState({});
   const [cursors, setCursors] = useState({});
@@ -29,7 +46,7 @@ export function useSessionState(socket, sessionId) {
   const [historyIndex, setHistoryIndex] = useState(-1);
 
   // Sprint 13-14: Camera state (zoom/pan)
-  const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1, timestamp: Date.now() });
+  const [camera, setCamera] = useState({ ...EMPTY_CAMERA, timestamp: 0 });
 
   // Sprint 16: Presence awareness
   const [userPresence, setUserPresence] = useState({});
@@ -51,7 +68,6 @@ export function useSessionState(socket, sessionId) {
   const [exportInProgress, setExportInProgress] = useState(false);
 
   // ─── v4 Feature 1: Templates ─────────────────────────────────────────────
-  // templateState holds the last loaded template metadata for audit purposes
   const [lastLoadedTemplate, setLastLoadedTemplate] = useState(null);
 
   // ─── v4 Feature 4: Video Embeds ──────────────────────────────────────────
@@ -62,198 +78,185 @@ export function useSessionState(socket, sessionId) {
   const [videoEmbeds, setVideoEmbeds] = useState([]);
 
   // ─── v4 Feature 5: Permissions ───────────────────────────────────────────
-  // Tracks the serialised permission snapshot from the server (informational)
   const [permissionSnapshot, setPermissionSnapshot] = useState(null);
+
+  /**
+   * Apply a full server-shaped session snapshot to local state.
+   * Used for the join ack (rule 1 above) and for any later full resync.
+   */
+  const applySnapshot = (s) => {
+    if (!s) return;
+    setUsers(s.users || []);
+    setSessionMembers(s.sessionMembers || {});
+    setStrokes(s.strokes || []);
+    setShapes(s.shapes || []);
+    setTextBoxes(s.textBoxes || []);
+    setCursors(s.cursors || {});
+    setMode(s.mode || 'pencil');
+    setHistory(s.history || []);
+    setHistoryIndex(s.historyIndex ?? -1);
+    setCamera(s.camera || { ...EMPTY_CAMERA, timestamp: 0 });
+    setUserPresence(s.userPresence || {});
+    setComments(s.comments || []);
+    setActivityLog(s.activityLog || []);
+    setVideoEmbeds(s.videoEmbeds || []);
+    setSessionData(s);
+  };
+
+  // ── RULE 1: seed from the ack, before any broadcast can matter ───────────
+  useEffect(() => {
+    applySnapshot(initialSnapshot);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSnapshot]);
 
   useEffect(() => {
     if (!socket || !sessionId) return;
 
-    // Remove any existing listeners to prevent duplicates
-    socket.off('user-joined');
-    socket.off('user-left');
-    socket.off('cursor-update');
-    socket.off('stroke-created');
-    socket.off('shape-created');
-    socket.off('text-created');
-    socket.off('text-updated');
-    socket.off('text-deleted');
-    socket.off('undo-applied');
-    socket.off('redo-applied');
-    socket.off('camera-updated');
-    socket.off('comment-created');
-    socket.off('comment-resolved');
-    socket.off('role-updated');
-    socket.off('tool-changed');
-    socket.off('text-formatting-updated');
-    socket.off('layer-created');
-    socket.off('layer-updated');
-    socket.off('layer-deleted');
-    socket.off('layer-order-changed');
-    socket.off('initial-layers');
-    socket.off('template-loaded');
-    socket.off('video-embed-created');
-    socket.off('video-embed-moved');
-    socket.off('video-embed-removed');
-    socket.off('permissions-snapshot');
-    socket.off('smart-shape-placed');
-    socket.off('shape-recognition-accepted');
-
     // ── Join / sync ──────────────────────────────────────────────────────
-    socket.on('user-joined', (data) => {
+    const onUserJoined = (data) => {
       if (!data) return;
       setUsers(data.users || []);
-      if (data.sessionState) {
-        const s = data.sessionState;
-        setStrokes(s.strokes || []);
-        setShapes(s.shapes || []);
-        setTextBoxes(s.textBoxes || []);
-        setCursors(s.cursors || {});
-        setMode(s.mode || 'pencil');
-        setSessionMembers(s.sessionMembers || {});
-        setHistory(s.history || []);
-        setHistoryIndex(s.historyIndex || -1);
-        setCamera(s.camera || { x: 0, y: 0, zoom: 1, timestamp: Date.now() });
-        setUserPresence(s.userPresence || {});
-        setComments(s.comments || []);
-        setActivityLog(s.activityLog || []);
-        // v4: restore embedded videos if server persists them
-        setVideoEmbeds(s.videoEmbeds || []);
-        setSessionData(s);
-      }
-    });
+      // A join broadcast carries the full session state; apply it so late joiners and
+      // already-present clients converge on the same board.
+      applySnapshot(data.sessionState);
+    };
 
-    socket.on('user-left', (data) => {
+    const onUserLeft = (data) => {
       if (!data) return;
       setUsers(data.users || []);
-      if (data.userId) {
-        setSessionMembers(prev => {
-          const updated = { ...prev };
-          delete updated[data.userId];
-          return updated;
-        });
-        setCursors(prev => {
-          const updated = { ...prev };
-          delete updated[data.userId];
-          return updated;
-        });
-        setUserPresence(prev => {
-          const updated = { ...prev };
-          delete updated[data.userId];
-          return updated;
-        });
-      }
-    });
+      if (!data.userId) return;
+      const drop = (prev) => {
+        const updated = { ...prev };
+        delete updated[data.userId];
+        return updated;
+      };
+      setSessionMembers(drop);
+      setCursors(drop);
+      setUserPresence(drop);
+    };
 
     // ── Cursors ──────────────────────────────────────────────────────────
-    socket.on('cursor-update', (data) => {
+    const onCursorUpdate = (data) => {
       if (!data || !data.userId) return;
-      setCursors(prev => ({ ...prev, [data.userId]: { x: data.x, y: data.y } }));
-    });
+      setCursors(prev => ({
+        ...prev,
+        [data.userId]: { x: data.x, y: data.y, timestamp: data.timestamp }
+      }));
+    };
 
     // ── Drawing ──────────────────────────────────────────────────────────
-    socket.on('stroke-created', (stroke) => {
+    const onStrokeCreated = (stroke) => {
       if (!stroke) return;
       setStrokes(prev => [...prev, stroke]);
-    });
+    };
 
-    socket.on('shape-created', (shape) => {
+    const onShapeCreated = (shape) => {
       if (!shape) return;
       setShapes(prev => [...prev, shape]);
-    });
+    };
 
     // ── Text ─────────────────────────────────────────────────────────────
-    socket.on('text-created', (textBox) => {
+    const onTextCreated = (textBox) => {
       if (!textBox) return;
       setTextBoxes(prev => [...prev, textBox]);
-    });
+    };
 
-    socket.on('text-updated', (textBox) => {
+    const onTextUpdated = (textBox) => {
       if (!textBox || !textBox.id) return;
       setTextBoxes(prev => prev.map(t => (t.id === textBox.id ? textBox : t)));
-    });
+    };
 
-    socket.on('text-deleted', (id) => {
+    const onTextDeleted = (id) => {
       if (!id) return;
       setTextBoxes(prev => prev.filter(t => t.id !== id));
-    });
+    };
 
     // ── Undo/Redo ────────────────────────────────────────────────────────
-    socket.on('undo-applied', (data) => {
+    // The server now sends the rebuilt element set. Applying only `operationIndex`
+    // (the old behaviour) meant Ctrl+Z moved a number and no ink ever disappeared.
+    const applyHistoryResult = (data) => {
       if (!data || data.operationIndex === undefined) return;
       setHistoryIndex(data.operationIndex);
-    });
-
-    socket.on('redo-applied', (data) => {
-      if (!data || data.operationIndex === undefined) return;
-      setHistoryIndex(data.operationIndex);
-    });
+      if (data.elements) {
+        setStrokes(data.elements.strokes || []);
+        setShapes(data.elements.shapes || []);
+        setTextBoxes(data.elements.textBoxes || []);
+      }
+    };
+    const onUndoApplied = applyHistoryResult;
+    const onRedoApplied = applyHistoryResult;
 
     // ── Camera ───────────────────────────────────────────────────────────
-    socket.on('camera-updated', (newCamera) => {
+    const onCameraUpdated = (newCamera) => {
       if (!newCamera) return;
       setCamera(newCamera);
-    });
+    };
 
     // ── Comments ─────────────────────────────────────────────────────────
-    socket.on('comment-created', (comment) => {
+    const onCommentCreated = (comment) => {
       if (!comment) return;
       setComments(prev => [...prev, comment]);
-    });
+    };
 
-    socket.on('comment-resolved', (commentId) => {
+    const onCommentResolved = (commentId) => {
       if (!commentId) return;
       setComments(prev =>
         prev.map(c => (c.id === commentId ? { ...c, resolved: true } : c))
       );
-    });
+    };
 
     // ── Roles ────────────────────────────────────────────────────────────
-    socket.on('role-updated', (data) => {
+    const onRoleUpdated = (data) => {
       if (!data || !data.userId || !data.newRole) return;
       setSessionMembers(prev => ({
         ...prev,
         [data.userId]: { ...prev[data.userId], role: data.newRole }
       }));
-    });
+    };
 
-    socket.on('tool-changed', (data) => {
+    const onToolChanged = (data) => {
       if (!data || !data.mode) return;
       setMode(data.mode);
-    });
+    };
 
     // ── v3: Text formatting ───────────────────────────────────────────────
-    socket.on('text-formatting-updated', (data) => {
+    const onTextFormattingUpdated = (data) => {
+      if (!data || !data.textId) return;
       setTextFormatting(prev => ({ ...prev, [data.textId]: data.formatting }));
-    });
+    };
 
     // ── v3: Layers ────────────────────────────────────────────────────────
-    socket.on('layer-created', (layer) => {
+    const onLayerCreated = (layer) => {
+      if (!layer) return;
       setLayers(prev => [...prev, layer]);
       setLayerOrder(prev => [...prev, layer.id]);
-    });
+    };
 
-    socket.on('layer-updated', (layer) => {
+    const onLayerUpdated = (layer) => {
+      if (!layer) return;
       setLayers(prev => prev.map(l => (l.id === layer.id ? layer : l)));
-    });
+    };
 
-    socket.on('layer-deleted', (layerId) => {
+    const onLayerDeleted = (layerId) => {
+      if (!layerId) return;
       setLayers(prev => prev.filter(l => l.id !== layerId));
       setLayerOrder(prev => prev.filter(id => id !== layerId));
-    });
+    };
 
-    socket.on('layer-order-changed', (newOrder) => {
+    const onLayerOrderChanged = (newOrder) => {
+      if (!newOrder) return;
       setLayerOrder(newOrder);
-    });
+    };
 
-    socket.on('initial-layers', (layersData) => {
-      setLayers(layersData.layers);
-      setLayerOrder(layersData.layerOrder);
-    });
+    const onInitialLayers = (layersData) => {
+      if (!layersData) return;
+      setLayers(layersData.layers || []);
+      setLayerOrder(layersData.layerOrder || []);
+    };
 
     // ── v4 Feature 1: Template loaded ─────────────────────────────────────
-    socket.on('template-loaded', (data) => {
+    const onTemplateLoaded = (data) => {
       if (!data) return;
-      // Replace canvas content with template shapes
       setShapes(data.shapes || []);
       setStrokes(data.strokes || []);
       setTextBoxes(data.texts || []);
@@ -262,68 +265,82 @@ export function useSessionState(socket, sessionId) {
         setLayerOrder(data.layers.map(l => l.id));
       }
       setLastLoadedTemplate(data.templateMeta || null);
-    });
+    };
 
     // ── v4 Feature 4: Video embeds ────────────────────────────────────────
-    socket.on('video-embed-created', (embed) => {
+    const onVideoEmbedCreated = (embed) => {
+      if (!embed) return;
       setVideoEmbeds(prev => [...prev, embed]);
-    });
+    };
 
-    socket.on('video-embed-moved', (data) => {
+    const onVideoEmbedMoved = (data) => {
+      if (!data) return;
       setVideoEmbeds(prev =>
         prev.map(v => (v.id === data.id ? { ...v, x: data.x, y: data.y } : v))
       );
-    });
+    };
 
-    socket.on('video-embed-removed', (embedId) => {
+    const onVideoEmbedRemoved = (embedId) => {
+      if (!embedId) return;
       setVideoEmbeds(prev => prev.filter(v => v.id !== embedId));
-    });
+    };
 
     // ── v4 Feature 5: Permissions snapshot ───────────────────────────────
-    socket.on('permissions-snapshot', (snapshot) => {
-      setPermissionSnapshot(snapshot);
-    });
+    const onPermissionsSnapshot = (snapshot) => setPermissionSnapshot(snapshot);
 
     // ── v4 Feature 2: Smart shapes ────────────────────────────────────────
-    socket.on('smart-shape-placed', (shape) => {
+    const onSmartShapePlaced = (shape) => {
+      if (!shape) return;
       setShapes(prev => [...prev, shape]);
-    });
+    };
 
-    // ── v4 Feature 3: Shape recognition ────────────────────────────────
-    socket.on('shape-recognition-accepted', (shape) => {
+    // ── v4 Feature 3: Shape recognition ──────────────────────────────────
+    const onShapeRecognitionAccepted = (shape) => {
+      if (!shape) return;
       setShapes(prev => [...prev, shape]);
-    });
+    };
+
+    /**
+     * RULE 2: every entry is [event, namedHandler] so teardown can pass the handler.
+     * Never collapse this to socket.off(event) — that would also unhook other components.
+     */
+    const listeners = [
+      ['user-joined', onUserJoined],
+      ['user-left', onUserLeft],
+      ['cursor-update', onCursorUpdate],
+      ['stroke-created', onStrokeCreated],
+      ['shape-created', onShapeCreated],
+      ['text-created', onTextCreated],
+      ['text-updated', onTextUpdated],
+      ['text-deleted', onTextDeleted],
+      ['undo-applied', onUndoApplied],
+      ['redo-applied', onRedoApplied],
+      ['camera-updated', onCameraUpdated],
+      ['comment-created', onCommentCreated],
+      ['comment-resolved', onCommentResolved],
+      ['role-updated', onRoleUpdated],
+      ['tool-changed', onToolChanged],
+      ['text-formatting-updated', onTextFormattingUpdated],
+      ['layer-created', onLayerCreated],
+      ['layer-updated', onLayerUpdated],
+      ['layer-deleted', onLayerDeleted],
+      ['layer-order-changed', onLayerOrderChanged],
+      ['initial-layers', onInitialLayers],
+      ['template-loaded', onTemplateLoaded],
+      ['video-embed-created', onVideoEmbedCreated],
+      ['video-embed-moved', onVideoEmbedMoved],
+      ['video-embed-removed', onVideoEmbedRemoved],
+      ['permissions-snapshot', onPermissionsSnapshot],
+      ['smart-shape-placed', onSmartShapePlaced],
+      ['shape-recognition-accepted', onShapeRecognitionAccepted],
+    ];
+
+    listeners.forEach(([event, handler]) => socket.on(event, handler));
 
     return () => {
-      socket.off('user-joined');
-      socket.off('user-left');
-      socket.off('cursor-update');
-      socket.off('stroke-created');
-      socket.off('shape-created');
-      socket.off('text-created');
-      socket.off('text-updated');
-      socket.off('text-deleted');
-      socket.off('undo-applied');
-      socket.off('redo-applied');
-      socket.off('camera-updated');
-      socket.off('comment-created');
-      socket.off('comment-resolved');
-      socket.off('role-updated');
-      socket.off('tool-changed');
-      socket.off('text-formatting-updated');
-      socket.off('layer-created');
-      socket.off('layer-updated');
-      socket.off('layer-deleted');
-      socket.off('layer-order-changed');
-      socket.off('initial-layers');
-      socket.off('template-loaded');
-      socket.off('video-embed-created');
-      socket.off('video-embed-moved');
-      socket.off('video-embed-removed');
-      socket.off('permissions-snapshot');
-      socket.off('smart-shape-placed');
-      socket.off('shape-recognition-accepted');
+      listeners.forEach(([event, handler]) => socket.off(event, handler));
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, sessionId]);
 
   return {

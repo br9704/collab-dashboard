@@ -10,7 +10,7 @@ with a one-line reason).
 **Rule:** never delete or rewrite content in this file. Expand it in place — add sub-tasks,
 file paths, edge cases, findings. Deepen, don't replace.
 
-**Current sprint pointer:** → Sprint 1 (Sprint 0 closed 2026-08-14)
+**Current sprint pointer:** → Sprint 2 (Sprints 0–1 closed 2026-08-14)
 
 ---
 
@@ -200,48 +200,98 @@ line names a capability the code does not have · `git grep -i "ai shape\|aiGene
 
 ---
 
-## Sprint 1 — Make the core journey work
+## Sprint 1 — Make the core journey work ✅ CLOSED 2026-08-14
 
 **Intent:** two browser windows, one board, both people drawing and seeing each other. This
 is the entire product and none of it currently works. Still on the socket layer — Yjs comes
 next, and this sprint's gate is what proves the migration didn't regress anything.
 
-- [ ] **Seed session state from the ack.** `SessionManager` currently keeps only
+- [x] **Seed session state from the ack.** `SessionManager` currently keeps only
       `response.sessionId` and discards `response.session`, which already contains the
       correct `sessionMembers`, `users` and full board state. Thread it through
       `onSessionJoin` → `App` → `useSessionState` as an initial snapshot. Kills the race by
       construction rather than by ordering luck. Applies to `session-join` identically.
-- [ ] **Emit `cursor-move`.** `moveCursor` (`useSessionState.js:354`) is called by nothing;
+- [x] **Emit `cursor-move`.** `moveCursor` (`useSessionState.js:354`) is called by nothing;
       `cursor-move` is never sent by the application. Wire it into `Canvas`'s
       `handleMouseMove` throttled to ~30 Hz — the scaffolding is already there
       (`lastCursorEmitRef`, `CURSOR_THROTTLE_MS = 33`, `Canvas.jsx:86-87`) and is currently
       spent on `camera-change` only. Use a separate throttle ref so cursor and camera don't
       starve each other.
-- [ ] **Stop the listener stomping.** `useSessionState` makes 26 bare `socket.off(evt)` calls
+- [x] **Stop the listener stomping.** `useSessionState` makes 26 bare `socket.off(evt)` calls
       (lines 72-99 and 298-325). Bare `.off(event)` removes *every* handler for that event,
       including `CursorPresence`'s own `cursor-update` listener (`CursorPresence.jsx:24`).
       Child effects run before parent effects, so `useSessionState` wins and kills it.
       Convert all of them to named handlers with `socket.off(evt, handler)`.
-- [ ] **Make `CursorPresence` a pure renderer** of `sessionState.cursors` instead of owning a
+- [x] **Make `CursorPresence` a pure renderer** of `sessionState.cursors` instead of owning a
       competing listener. Also fixes its effect re-running every render (`easeOutQuad` is
       redeclared inline each render and sits in its dep array, `CursorPresence.jsx:61`).
-- [ ] **Fix the user-shape mismatch.** The server sends `users` as an array of socket-id
+- [x] **Fix the user-shape mismatch.** The server sends `users` as an array of socket-id
       **strings**; `App.jsx:156` and `App.jsx:269` both treat entries as objects and read
       `.id`. `UserList.jsx` treats them correctly as strings — align on strings.
-- [ ] **Make undo/redo mutate content.** `Session.undo()` (`server.js:118`) only decrements
+- [x] **Make undo/redo mutate content.** `Session.undo()` (`server.js:118`) only decrements
       `historyIndex`; it never touches `session.strokes`, and the broadcast carries only
       `operationIndex`, which the client assigns straight to state (`useSessionState.js:183`).
       Ctrl+Z currently changes a number and no ink disappears. Apply/revert the recorded
       operation and broadcast the resulting element set.
-- [ ] Add a favicon to `collab-frontend/index.html` — removes the `404` on load.
+- [x] Add a favicon to `collab-frontend/index.html` — removes the `404` on load.
 
 **Gate (evidence required, per CLAUDE.md):** two browser windows on one board, recorded —
 creator can draw · both cursors move live · `ONLINE (2)` · a stroke drawn in window A appears
 in window B · Ctrl+Z removes it in **both** · zero console errors. Plus the scripted repro
 above now reporting `creator` / `1`.
 
-**As-shipped delta:** _(fill at close)_
-**Deferred:** _(fill at close)_
+**Verification — PASSED 2026-08-14.** Two independent harnesses, both green.
+
+*Protocol level* (scripted socket clients, `sprint1-protocol.cjs`) — **14/14**:
+creator role from the ack · presence counts the creator · joiner defaults to viewer · joiner
+sees both users · creator notified of the join · creator keeps its role after a join · cursor
+from A reaches B · creator can draw · stroke reaches B · **viewer is refused** · undo
+broadcasts a rebuilt element set · undo removes the stroke · B sees the removal · redo
+restores it.
+
+*Browser level* (Playwright, two real Chromium windows, `two-window.cjs`) — **15/15**:
+role badge reads `creator` · no View Only overlay for the creator · `ONLINE (1)` → `ONLINE (2)`
+in both windows · session id readable in full · joiner badge reads `viewer` · A's stroke
+renders on B (960 non-background pixels) · remote cursor rendered and positioned by
+`transform` · Ctrl+Z clears the ink in **both** windows (0 pixels remain) · **no console
+errors in either window** · **no failed network requests** (the `404` is gone).
+Screenshots of both windows captured.
+
+**As-shipped delta:**
+- **Two further blockers found while building, both fixed:**
+  1. **The session id was truncated in the only place it is displayed** —
+     `sessionId?.slice(0, 10)…` against a 13-character id. A user could not read their own
+     session id, so **nobody could ever join a board**. Two-window collaboration was
+     impossible through the UI even with the role bug fixed. Now shown in full, selectable,
+     with a copy button.
+  2. **Canvas coordinates were desynchronised from the pointer.** The bitmap was sized
+     `window.innerWidth - 200` while CSS gave the element `flex: 1` plus `margin: 24px` and
+     `padding: 24px` — so the bitmap was scaled to a different size than it was drawn at and
+     every stroke landed offset from the cursor. The bitmap is now sized from the element's
+     own `getBoundingClientRect()`, and the box-model insets moved off the canvas.
+- **Cursors are broadcast in canvas space, not screen space** (a design call, not in the
+  plan). A remote cursor now stays attached to board content when either side pans or zooms.
+  `CursorPresence` converts to viewport space using the live canvas rect and the local camera.
+- **Cursor and camera throttles were separated.** They shared `lastCursorEmitRef`, so panning
+  starved cursor broadcasts and vice versa.
+- **`undo()`'s guard was off by one.** It read `historyIndex > 0`, which made the *first*
+  operation on a board permanently un-undoable. Now `>= 0`, so undoing back to an empty board
+  works. Undo is implemented by replaying `history[0..historyIndex]` — the log is already a
+  complete ordered record and is capped at 100 entries, so the replay is bounded.
+- **A latent crash was guarded**: `cursor-move` wrote to `session.userPresence[userId].cursor`
+  unconditionally, which throws if the user was removed from the session first (reconnect
+  races).
+- Cursor emission was deliberately placed **above** the `canDraw` gate: a viewer's cursor
+  must still be visible to others. Presence is not a drawing permission.
+
+**Deferred:**
+- Cursor interpolation (MOTION.md's 80 ms buffered, time-based easing), name chips, join
+  rings and idle fades → **Sprint 4**, which owns motion. Sprint 1 renders cursors correctly
+  but without smoothing.
+- **New layout finding for Sprint 4:** in the creator's window the session-info block is
+  pushed below the fold by the extra creator-only panel buttons — so the person who most
+  needs to share the session id has to scroll to reach it. Confirmed in the captured
+  screenshot. Fix with the rest of the panel-overlap work.
 
 ---
 

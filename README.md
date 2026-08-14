@@ -5,8 +5,11 @@ Socket.io on the back. Sessions, live cursors, shared strokes, roles, comments.
 
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> **Status: under active repair. Do not treat this as working software yet.**
-> The socket layer is real; the client wiring on top of it is not. The specific defects are
+> **Status: under active repair.**
+> The core journey works as of Sprint 1 — two people can open one board and draw together,
+> with live cursors, correct roles and working undo, verified in two real browser windows.
+> What remains is listed below: nothing persists across a restart, several UI features are
+> not wired to the server, and it cannot yet be deployed. The specific defects are
 > listed in [Known issues](#known-issues) below and are being worked in the order set by
 > [`masterplan.md`](masterplan.md). This section will shrink as sprints close.
 
@@ -18,10 +21,10 @@ These are measured, not suspected. Each links to the sprint that closes it.
 
 | Issue | Effect | Fixed in |
 |---|---|---|
-| Session state is broadcast before the client subscribes | The session **creator is assigned `viewer`** and cannot draw on their own board; presence reads `ONLINE (0)` | Sprint 1 |
-| `cursor-move` is never emitted by the app | **Live cursors never transmit** — the headline feature does nothing | Sprint 1 |
-| `useSessionState` calls bare `socket.off(event)` | Removes other components' listeners for the same event | Sprint 1 |
-| `Session.undo()` only moves an index | Ctrl+Z changes a number; no ink disappears | Sprint 1 |
+| ~~Session state broadcast before the client subscribes~~ | ~~creator assigned `viewer`; `ONLINE (0)`~~ | **fixed, Sprint 1** |
+| ~~`cursor-move` never emitted~~ | ~~live cursors never transmit~~ | **fixed, Sprint 1** |
+| ~~bare `socket.off(event)` unhooks other components~~ | ~~remote cursors silently stopped rendering~~ | **fixed, Sprint 1** |
+| ~~`Session.undo()` only moves an index~~ | ~~Ctrl+Z changed a number; no ink disappeared~~ | **fixed, Sprint 1** |
 | 13 client events have no server handler | Templates, Smart Shapes, Layers, Text Formatting and Video Embed do nothing at all | Sprint 3 |
 | All state is `new Map()` in memory, and sessions are deleted when the last user leaves | **Nothing survives a restart**, and it cannot scale past one process | Sprint 2 |
 | Socket URL and CORS origins are hardcoded to `localhost`; there are zero HTTP routes | Cannot be deployed anywhere | Sprint 6 |

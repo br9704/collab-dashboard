@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import TextInputDialog from './TextInputDialog';
+import CursorPresence from './CursorPresence';
 import TextFormattingToolbar from './TextFormattingToolbar';
 import ExportDialog from './ExportDialog';
 import ShapeRecognition from './ShapeRecognition';
@@ -82,8 +83,10 @@ export default function Canvas({
   const dirtyRef = useRef(true);
   const animationFrameRef = useRef(null);
 
-  // PERFORMANCE: Throttle tracking for cursor events
+  // PERFORMANCE: Throttle tracking. Cursor and camera get SEPARATE clocks — they shared one
+  // before, which meant panning starved cursor broadcasts (and vice versa).
   const lastCursorEmitRef = useRef(0);
+  const lastCameraEmitRef = useRef(0);
   const CURSOR_THROTTLE_MS = 33; // ~30fps
 
   // Viewers cannot draw
@@ -156,8 +159,14 @@ export default function Canvas({
     if (!canvas) return;
 
     const resizeCanvas = () => {
-      const newWidth = window.innerWidth - 200;
-      const newHeight = window.innerHeight - 100;
+      // Size the bitmap from the element's OWN box, not from the window. It used to be
+      // `window.innerWidth - 200` while CSS gave the element `flex: 1` plus margin and
+      // padding — so the bitmap was stretched to a different size than it was drawn at, and
+      // every pointer coordinate landed offset from the ink. Reading the rect keeps the
+      // pointer→bitmap mapping exactly 1:1.
+      const rect = canvas.getBoundingClientRect();
+      const newWidth = Math.max(1, Math.round(rect.width));
+      const newHeight = Math.max(1, Math.round(rect.height));
 
       // Only update if dimensions actually changed
       if (canvas.width !== newWidth || canvas.height !== newHeight) {
@@ -372,13 +381,30 @@ export default function Canvas({
   };
 
   const handleMouseMove = (e) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    // Canvas-space coordinates. Cursors are broadcast in this space, not screen space, so a
+    // remote cursor stays attached to the board content when either side pans or zooms.
+    const x = (e.clientX - rect.left - camera.x) / camera.zoom;
+    const y = (e.clientY - rect.top - camera.y) / camera.zoom;
+
+    // Broadcast presence BEFORE the permission gate. `moveCursor` existed in useSessionState
+    // but was called by nothing, so `cursor-move` was never emitted by the app at all and
+    // live cursors — the headline feature — never transmitted. A viewer's cursor must be
+    // visible too, so this deliberately sits above the canDraw check.
+    const now = Date.now();
+    if (now - lastCursorEmitRef.current >= CURSOR_THROTTLE_MS) {
+      lastCursorEmitRef.current = now;
+      socket?.emit('cursor-move', { x, y });
+    }
+
     if (!canDraw) return;
 
     // Canvas panning
     if (isDraggingCanvas && dragStart) {
       // PERFORMANCE: Throttle camera updates (30fps max)
-      const now = Date.now();
-      const shouldEmit = now - lastCursorEmitRef.current >= CURSOR_THROTTLE_MS;
+      const shouldEmit = now - lastCameraEmitRef.current >= CURSOR_THROTTLE_MS;
 
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
@@ -392,7 +418,7 @@ export default function Canvas({
 
       if (shouldEmit) {
         socket?.emit('camera-change', newCamera);
-        lastCursorEmitRef.current = now;
+        lastCameraEmitRef.current = now;
       }
 
       setDragStart({ x: e.clientX, y: e.clientY });
@@ -401,10 +427,6 @@ export default function Canvas({
     }
 
     if (!isDrawing) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left - camera.x) / camera.zoom;
-    const y = (e.clientY - rect.top - camera.y) / camera.zoom;
 
     if (tool === 'pencil' && currentStrokeRef.current) {
       currentStrokeRef.current.push({ x, y });
@@ -756,6 +778,16 @@ export default function Canvas({
         style={{ cursor: getCursorStyle() }}
         aria-label="Collaborative drawing canvas - Use keyboard shortcuts 1-5 to select tools, Ctrl+Scroll to zoom, Middle-click to pan"
         tabIndex={0}
+      />
+
+      {/* Remote cursors. Rendered here, not in App, because placing a canvas-space point
+          needs the canvas element's rect and the local camera — both of which live here. */}
+      <CursorPresence
+        cursors={sessionState.cursors}
+        users={sessionState.users}
+        currentUserId={currentUserId}
+        camera={camera}
+        canvasRef={canvasRef}
       />
 
       {/* v4 Feature 4: Video embed overlays */}

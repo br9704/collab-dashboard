@@ -7,7 +7,9 @@ import './SessionManager.css';
  *
  * @param {Object}   props
  * @param {Object}   props.socket        - Socket.io client instance
- * @param {Function} props.onSessionJoin - Called with sessionId when user creates or joins
+ * @param {Function} props.onSessionJoin - Called with (sessionId, sessionSnapshot) when the
+ *   user creates or joins. The snapshot is the server's ack payload and is the authoritative
+ *   initial state — see the comment in handleCreate for why it must not be discarded.
  */
 export default function SessionManager({ socket, onSessionJoin }) {
   const [sessionId, setSessionId] = useState('');
@@ -29,7 +31,11 @@ export default function SessionManager({ socket, onSessionJoin }) {
     setError('');
     socket.emit('session-create', (response) => {
       if (response.sessionId) {
-        onSessionJoin(response.sessionId);
+        // Pass the full snapshot up, not just the id. The server broadcasts `user-joined`
+        // BEFORE invoking this ack, so a listener registered after this point never sees it —
+        // that race is what left the creator as a viewer with ONLINE (0). The ack already
+        // carries the correct sessionMembers/users; seeding from it removes the race entirely.
+        onSessionJoin(response.sessionId, response.session);
       }
       setLoading(false);
     });
@@ -51,7 +57,8 @@ export default function SessionManager({ socket, onSessionJoin }) {
         setError(response.error);
         setLoading(false);
       } else {
-        onSessionJoin(response.sessionId);
+        // Same ack-seeding as session-create: the join broadcast races the ack identically.
+        onSessionJoin(response.sessionId, response.session);
       }
     });
   };

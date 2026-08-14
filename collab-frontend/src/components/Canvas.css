@@ -205,10 +205,9 @@ label {
   background: white;
   cursor: crosshair;
   touch-action: none;
-  padding: 24px;
-  border-radius: 8px;
-  margin: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  /* No padding/margin: the 2D bitmap is sized from this element's box, so any box-model
+     inset here desynchronises pointer coordinates from the ink. Spacing belongs on the
+     container, not on the canvas itself. */
 }
 
 .view-only-overlay {

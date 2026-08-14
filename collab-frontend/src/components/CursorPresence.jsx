@@ -2,88 +2,82 @@ import { useEffect, useRef, useState } from 'react';
 import './CursorPresence.css';
 
 /**
- * CursorPresence — renders remote users' cursors as colored pointer overlays.
- * Uses requestAnimationFrame for smooth cursor interpolation.
+ * CursorPresence — renders remote users' cursors over the canvas.
+ *
+ * This is a PURE RENDERER. It used to own its own `cursor-update` socket listener, which
+ * collided with the one in useSessionState: that hook tore listeners down with a bare
+ * `socket.off('cursor-update')`, which removes *every* handler for the event, including this
+ * component's. Child effects run before parent effects, so the hook always won and this
+ * component's listener was silently unhooked. One listener, one owner — the hook — and this
+ * component just draws what it is given.
+ *
+ * Positions arrive in CANVAS space and are converted to viewport space here using the live
+ * canvas rect and the local camera, so a remote cursor stays attached to the board content
+ * regardless of how either side has panned or zoomed.
+ *
+ * Interpolation here is deliberately minimal. MOTION.md specifies 80 ms buffered, time-based
+ * easing; that lands in Sprint 4 along with name chips, join rings and idle fades.
  *
  * @param {Object} props
- * @param {Object} props.socket        - Socket.io client instance
- * @param {Object} props.cursors       - Map of userId → { x, y, timestamp }
- * @param {Array}  props.users         - Array of connected user objects
+ * @param {Object} props.cursors       - Map of userId → { x, y, timestamp } in canvas space
+ * @param {Array}  props.users         - Array of connected user ids (strings)
  * @param {string} props.currentUserId - Current user's socket ID (excluded from rendering)
+ * @param {Object} props.camera        - { x, y, zoom } of the local view
+ * @param {Object} props.canvasRef     - Ref to the <canvas> element, for its bounding rect
  */
-export default function CursorPresence({ socket, cursors, users, currentUserId }) {
-  const animationFrameRef = useRef({});
-  const [displayCursors, setDisplayCursors] = useState({});
-
-  // Define easing function before useEffect
-  const easeOutQuad = (t) => t * (2 - t);
+export default function CursorPresence({ cursors, users, currentUserId, camera, canvasRef }) {
+  // The canvas rect is read on a frame tick rather than per render: it changes on resize and
+  // layout, and reading it during render would thrash.
+  const [rect, setRect] = useState(null);
+  const rafRef = useRef(null);
 
   useEffect(() => {
-    if (!socket) return;
-
-    socket.on('cursor-update', (data) => {
-      const { userId, x, y } = data;
-
-      // Get current position (or default if first update)
-      const fromX = displayCursors[userId]?.x ?? x;
-      const fromY = displayCursors[userId]?.y ?? y;
-
-      // Cancel existing animation for this user
-      if (animationFrameRef.current[userId]) {
-        cancelAnimationFrame(animationFrameRef.current[userId]);
+    const measure = () => {
+      const el = canvasRef?.current;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        setRect(prev => {
+          if (prev && prev.left === r.left && prev.top === r.top) return prev;
+          return { left: r.left, top: r.top };
+        });
       }
+      rafRef.current = requestAnimationFrame(measure);
+    };
+    rafRef.current = requestAnimationFrame(measure);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [canvasRef]);
 
-      // Animate to new position over 50ms
-      const startTime = Date.now();
-      const durationMs = 50;
+  if (!rect || !cursors) return null;
 
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / durationMs, 1);
-        const easeProgress = easeOutQuad(progress);
+  const zoom = camera?.zoom ?? 1;
+  const camX = camera?.x ?? 0;
+  const camY = camera?.y ?? 0;
 
-        const interpX = fromX + (x - fromX) * easeProgress;
-        const interpY = fromY + (y - fromY) * easeProgress;
-
-        setDisplayCursors(prev => ({
-          ...prev,
-          [userId]: { x: interpX, y: interpY }
-        }));
-
-        if (progress < 1) {
-          animationFrameRef.current[userId] = requestAnimationFrame(animate);
-        }
-      };
-      animate();
-    });
-
-    return () => socket.off('cursor-update');
-  }, [socket, displayCursors, easeOutQuad]);
-
-  const getColor = (index) => {
-    const colors = ['#ff6b6b', '#4ecdc4', '#6b7280', '#ffa502', '#a8e6cf'];
-    return colors[index % colors.length];
+  // Stable per-user shade so the same collaborator keeps the same cursor between renders.
+  const shadeFor = (userId) => {
+    const index = Math.max(0, (users || []).indexOf(userId));
+    const shades = ['#f0ece4', '#98928a', '#55504a', '#c9c3b8', '#7d776f'];
+    return shades[index % shades.length];
   };
-
-  const getUserIndex = (userId) => users.indexOf(userId);
 
   return (
     <>
-      {Object.entries(displayCursors).map(([userId, pos]) =>
-        userId !== currentUserId ? (
+      {Object.entries(cursors).map(([userId, pos]) => {
+        if (userId === currentUserId || !pos) return null;
+        return (
           <div
             key={userId}
             className="cursor"
             style={{
-              left: pos.x,
-              top: pos.y,
-              background: getColor(getUserIndex(userId)),
-              boxShadow: `0 0 8px ${getColor(getUserIndex(userId))}`
+              transform: `translate3d(${rect.left + pos.x * zoom + camX}px, ${rect.top + pos.y * zoom + camY}px, 0)`,
+              background: shadeFor(userId),
             }}
             title={userId.slice(0, 8)}
           />
-        ) : null
-      )}
+        );
+      })}
     </>
   );
 }

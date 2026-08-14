@@ -19,7 +19,6 @@ import { SessionPermissionManager, BASE_ROLES } from './utils/permissions';
 import SessionManager from './components/SessionManager';
 import Canvas from './components/Canvas';
 import UserList from './components/UserList';
-import CursorPresence from './components/CursorPresence';
 import LatencyMeter from './components/LatencyMeter';
 import PresenceHalo from './components/PresenceHalo';
 import CommentsPanel from './components/CommentsPanel';
@@ -44,6 +43,12 @@ export default function App() {
   const { socket, connected, error, reconnectAttempt } = useSocket('http://localhost:3001');
   const [sessionId, setSessionId] = useState(null);
   const [isJoined, setIsJoined] = useState(false);
+  /**
+   * The server's session-create / session-join ack payload. This is the authoritative
+   * initial state — the `user-joined` broadcast that carries the same data is emitted
+   * before any listener can exist. See useSessionState rule 1.
+   */
+  const [initialSnapshot, setInitialSnapshot] = useState(null);
 
   // Toast notifications
   const { addToast, ToastContainer } = useToast();
@@ -81,7 +86,7 @@ export default function App() {
    */
   const [permissionManager, setPermissionManager] = useState(null);
 
-  const sessionState = useSessionState(socket, sessionId);
+  const sessionState = useSessionState(socket, sessionId, initialSnapshot);
 
   // ── Toast notifications for session events ────────────────────────────────
   useEffect(() => {
@@ -153,9 +158,12 @@ export default function App() {
     const members = sessionState.sessionMembers || {};
     const users = sessionState.users || [];
 
-    users.forEach(user => {
-      const role = members[user.id]?.role || BASE_ROLES.VIEWER;
-      mgr.registerUser(user.id, role);
+    // `users` is an array of socket-id STRINGS (server.js sends Array.from(session.users)).
+    // This previously read `user.id` on a string, which is always undefined — so every user
+    // was registered under key `undefined` with the fallback VIEWER role.
+    users.forEach(userId => {
+      const role = members[userId]?.role || BASE_ROLES.VIEWER;
+      mgr.registerUser(userId, role);
     });
 
     setPermissionManager(mgr);
@@ -167,7 +175,10 @@ export default function App() {
   const canEdit = userRole !== 'viewer';
 
   // ── Session handlers ─────────────────────────────────────────────────────
-  const handleSessionJoin = (sid) => {
+  const handleSessionJoin = (sid, snapshot) => {
+    // Seed state before flipping isJoined, so the board renders with the correct role
+    // and user list on its very first paint rather than after a broadcast that never comes.
+    setInitialSnapshot(snapshot || null);
     setSessionId(sid);
     setIsJoined(true);
   };
@@ -175,6 +186,7 @@ export default function App() {
   const handleExit = () => {
     setIsJoined(false);
     setSessionId(null);
+    setInitialSnapshot(null);
     setPermissionManager(null);
     setShowTemplateManager(false);
     setShowSmartShapes(false);
@@ -265,11 +277,12 @@ export default function App() {
 
   // ── User list for AdvancedPermissions ────────────────────────────────────
   /** Map session users to the shape expected by AdvancedPermissions */
+  // As above: entries are socket-id strings, not objects.
   const usersForPermissions = useMemo(() => (
-    (sessionState.users || []).map(u => ({
-      id: u.id,
-      name: u.name || u.id?.slice(0, 8),
-      role: sessionState.sessionMembers?.[u.id]?.role || BASE_ROLES.VIEWER,
+    (sessionState.users || []).map(userId => ({
+      id: userId,
+      name: userId.slice(0, 8),
+      role: sessionState.sessionMembers?.[userId]?.role || BASE_ROLES.VIEWER,
     }))
   ), [sessionState.users, sessionState.sessionMembers]);
 
@@ -495,11 +508,26 @@ export default function App() {
             </button>
           )}
 
-          {/* Session info */}
+          {/* Session info.
+              The id used to render as `sessionId.slice(0, 10)…` — truncated in the only
+              place it is ever shown, which meant a user could not read their own session id
+              to share it, and therefore nobody could join. It is now shown in full and is
+              selectable/copyable. */}
           <div className="session-info">
-            Session: <code>{sessionId?.slice(0, 10)}…</code>
-            <br />
-            Role: <span className="role-badge">{userRole}</span>
+            <label htmlFor="session-id-value">Session</label>
+            <code id="session-id-value" data-session-id={sessionId || ''}>{sessionId}</code>
+            <button
+              type="button"
+              className="copy-session-id"
+              onClick={() => navigator.clipboard?.writeText(sessionId || '')}
+              aria-label="Copy session ID to clipboard"
+              title="Copy session ID"
+            >
+              copy
+            </button>
+            <div>
+              Role: <span className="role-badge">{userRole}</span>
+            </div>
           </div>
         </div>
 
@@ -523,13 +551,8 @@ export default function App() {
         {/* Latency meter */}
         <LatencyMeter socket={socket} />
 
-        {/* Remote cursors */}
-        <CursorPresence
-          socket={socket}
-          cursors={sessionState.cursors}
-          users={sessionState.users}
-          currentUserId={socket?.id}
-        />
+        {/* Remote cursors are rendered inside Canvas — they need the canvas rect and the
+            local camera to place a canvas-space point correctly. */}
         </div>
       </ErrorBoundary>
 

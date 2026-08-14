@@ -452,3 +452,40 @@ button:focus-visible,
   outline: 2px solid #374151;
   outline-offset: 2px;
 }
+
+/* ── Session id block ──────────────────────────────────────────────────────
+   The session id is the only way another person can join this board, so it has
+   to be readable and copyable in full. Sprint 4 restyles this against SIGNAL. */
+.session-info label {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+
+.session-info code {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  user-select: all;
+  padding: 4px 0;
+}
+
+.copy-session-id {
+  font-family: inherit;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 2px;
+}
+
+.copy-session-id:hover {
+  border-color: #9ca3af;
+}

@@ -116,13 +116,66 @@ class Session {
     }
   }
 
+  /**
+   * Rebuild the element collections from history[0 .. historyIndex].
+   *
+   * Undo/redo used to move `historyIndex` and nothing else — the strokes array was never
+   * touched, so Ctrl+Z changed a number and no ink disappeared. Replaying the log is the
+   * cheapest correct fix: history is already a complete, ordered record of every mutation,
+   * and it is capped at maxHistorySize (100), so a replay is bounded and fast.
+   */
+  rebuildFromHistory() {
+    this.strokes = [];
+    this.shapes = [];
+    this.textBoxes = [];
+
+    for (let i = 0; i <= this.historyIndex && i < this.history.length; i++) {
+      const { action, payload } = this.history[i];
+
+      switch (action) {
+        case 'stroke-added':
+          this.strokes.push(payload.stroke);
+          break;
+        case 'shape-added':
+          this.shapes.push(payload.shape);
+          break;
+        case 'text-added':
+          this.textBoxes.push(payload.textBox);
+          break;
+        case 'text-updated': {
+          const t = this.textBoxes.find(tb => tb.id === payload.textBoxId);
+          if (t) t.text = payload.newText;
+          break;
+        }
+        case 'text-deleted':
+          this.textBoxes = this.textBoxes.filter(tb => tb.id !== payload.textBoxId);
+          break;
+        default:
+          // Unknown action: ignore rather than corrupt the rebuild.
+          break;
+      }
+    }
+  }
+
+  /** The element set clients need to render after an undo/redo. */
+  elements() {
+    return {
+      strokes: this.strokes,
+      shapes: this.shapes,
+      textBoxes: this.textBoxes
+    };
+  }
+
   undo() {
-    if (this.historyIndex > 0) {
+    // historyIndex may go to -1: undoing the very first operation clears the board.
+    // The old guard (`> 0`) made the first operation permanently un-undoable.
+    if (this.historyIndex >= 0) {
       this.historyIndex--;
+      this.rebuildFromHistory();
       return {
         success: true,
         operationIndex: this.historyIndex,
-        history: this.history
+        elements: this.elements()
       };
     }
     return { success: false };
@@ -131,10 +184,11 @@ class Session {
   redo() {
     if (this.historyIndex < this.history.length - 1) {
       this.historyIndex++;
+      this.rebuildFromHistory();
       return {
         success: true,
         operationIndex: this.historyIndex,
-        history: this.history
+        elements: this.elements()
       };
     }
     return { success: false };
@@ -417,10 +471,14 @@ io.on('connection', (socket) => {
 
     const { x, y } = data;
     session.cursors[userId] = { x, y, timestamp: Date.now() };
-    
-    // Sprint 16: Update presence awareness
-    session.userPresence[userId].cursor = { x, y };
-    session.userPresence[userId].lastActivity = Date.now();
+
+    // Sprint 16: Update presence awareness.
+    // Guarded: a cursor-move can arrive after the user has been removed from the session
+    // (reconnect races), and an unguarded write here throws on undefined.
+    if (session.userPresence[userId]) {
+      session.userPresence[userId].cursor = { x, y };
+      session.userPresence[userId].lastActivity = Date.now();
+    }
 
     socket.to(currentSessionId).emit('cursor-update', {
       userId,
@@ -720,11 +778,14 @@ io.on('connection', (socket) => {
     const result = session.undo();
     if (result.success) {
       console.log(`[UNDO] User ${userId} at operation index ${result.operationIndex}`);
-      
-      // Broadcast undo to all session members
+      session.logActivity('undo', userId, { operationIndex: result.operationIndex });
+
+      // Broadcast the resulting element set, not just the index — clients cannot
+      // reconstruct the board from an index alone.
       io.to(currentSessionId).emit('undo-applied', {
         operationIndex: result.operationIndex,
-        appliedBy: userId
+        appliedBy: userId,
+        elements: result.elements
       });
     }
     callback && callback(result);
@@ -754,11 +815,12 @@ io.on('connection', (socket) => {
     const result = session.redo();
     if (result.success) {
       console.log(`[REDO] User ${userId} at operation index ${result.operationIndex}`);
-      
-      // Broadcast redo to all session members
+      session.logActivity('redo', userId, { operationIndex: result.operationIndex });
+
       io.to(currentSessionId).emit('redo-applied', {
         operationIndex: result.operationIndex,
-        appliedBy: userId
+        appliedBy: userId,
+        elements: result.elements
       });
     }
     callback && callback(result);
