@@ -35,7 +35,7 @@ The socket layer underneath is genuine work. None of it is reachable by a user.
 ## Locked decisions (do not relitigate)
 
 - **Working on localhost comes before deployability, which comes before features.** The order is: role/presence bug → honesty pass → env-parameterisation → deploy → persistence.
-- **Claim only what the code does.** Three current violations: the boot banner and docs headline *"Persistence"* while all state is `const sessions = new Map()` at `server.js:30`, lost on every restart. *"AI shape completion"* is 447 LOC of geometric heuristics — **rename it to shape recognition; it is more impressive honest than as fake AI.** The portfolio's *"50–80ms sync"* is unverified (though measurable via the existing `latency-ping` handler).
+- **Claim only what the code does.** Three current violations: the boot banner and docs headline *"Persistence"* while all state is `const sessions = new Map()` at `server.js:30`, lost on every restart. *"AI shape completion"* is 447 LOC of geometric heuristics — **rename it to shape recognition; it is more impressive honest than as fake AI.** *(All three were resolved in Sprints 0–5. The file is now 588 lines after the Sprint 5 bug fixes; the original 447 stands as the figure at audit time.)* The portfolio's *"50–80ms sync"* is unverified (though measurable via the existing `latency-ping` handler).
 - **Nothing may stay hardcoded to localhost.** `collab-frontend/src/App.jsx:44` and `src/hooks/useSocket.js:11` both hardcode `http://localhost:3001`; `server.js:15` hardcodes the CORS origin array. These become `VITE_SOCKET_URL` and `CORS_ORIGIN`. A `GET /health` route is required — there are currently **zero HTTP routes**.
 - **Deploy topology:** static frontend on Vercel + a long-lived WebSocket backend on Railway/Fly. **Serverless cannot host WebSockets** — this needs a real always-on process, which costs money (`ask_human`).
 - **Docs are not process artifacts.** 40 markdown files including 11 `TEST_REPORT_*.md` and 4 `VERIFICATION_REPORT_*.md`, against **zero tests**. Keep README + DEPLOYMENT + API; delete the rest.
@@ -174,11 +174,25 @@ mounted volume, and exactly one machine (documents live in the serving process's
 two machines would diverge while both looked healthy). `DEPLOYMENT.md` was rewritten, not
 patched; the old one documented three things that did not exist.
 
-Still open: no demo GIF, and the "50–80ms sync" claim still unmeasured on a real network
-(Sprint 7); nothing actually deployed, commits authored by "Subagent", and CI has never run on
-GitHub because nothing is pushed (Sprint 8, owner-gated). Synchronised camera is published
-over Awareness but nothing consumes it. Horizontal scaling is unsupported and documented as
-such.
+**Sprint 7 closed — the demo exists and the numbers are measured.** `docs/demo.gif` is one
+continuous 22.7 s take from the creator's window with a second browser genuinely driving the
+other side: join, live cursors, a stroke drawing progressively, a shape snapping, a comment
+resolved. End-to-end sync (stroke committed by A → element present in B, everything included)
+is **p50 8 ms loopback, 7 ms / p95 16 ms over the LAN**, reproducible via
+`benchmarks/sync-latency.cjs`. All eight acceptance harnesses now live in `benchmarks/`.
+
+**Recording the demo found a product bug** — the best argument for recording one. A hand-drawn
+zigzag was silently replaced by a straight line, because linearity was measured locally (a
+smooth wave is locally straight everywhere) and accepting a recognition replaces the stroke.
+`tryLine` now measures global straightness, and auto-keep is gated at 0.85 confidence: below
+that, doing nothing keeps *your* stroke. Silence must never cost a user their work.
+
+The "50–80ms sync" portfolio line is still **unbacked** — not contradicted, just about a
+deployment that does not exist. It gets measured in Sprint 8 or dropped.
+
+Still open, all owner-gated (Sprint 8): nothing deployed, commits authored by "Subagent", CI
+has never run on GitHub because nothing is pushed. Synchronised camera is published over
+Awareness but nothing consumes it; horizontal scaling is unsupported. Both documented.
 
 Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 

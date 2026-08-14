@@ -440,9 +440,33 @@ function tryLine(features, points) {
   // Should be linear
   if (linearity < 0.7) return null;
 
+  /**
+   * GLOBAL straightness, not just local.
+   *
+   * `calculateLinearity` compares each point against its immediate neighbours, so a smooth
+   * wave — which is locally almost straight everywhere — scored as a line and got snapped
+   * into one. A zigzag drawn in the demo was silently replaced by a straight diagonal.
+   *
+   * A line is defined by its endpoints: measure how far the path strays from the chord
+   * between the first and last point, relative to that chord's length.
+   */
+  const a = points[0];
+  const b = points[points.length - 1];
+  const chord = Math.hypot(b.x - a.x, b.y - a.y);
+  if (chord <= 0) return null;
+
+  let maxDeviation = 0;
+  for (const p of points) {
+    const d = Math.abs((b.y - a.y) * p.x - (b.x - a.x) * p.y + b.x * a.y - b.y * a.x) / chord;
+    if (d > maxDeviation) maxDeviation = d;
+  }
+
+  const straightness = Math.max(0, 1 - (maxDeviation / chord) / 0.12);
+  if (straightness < 0.4) return null;
+
   return {
     shape: 'line',
-    confidence: 0.9 * linearity,
+    confidence: 0.9 * linearity * straightness,
     bounds: features.bounds
   };
 }

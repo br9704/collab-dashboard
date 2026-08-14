@@ -10,7 +10,7 @@ with a one-line reason).
 **Rule:** never delete or rewrite content in this file. Expand it in place — add sub-tasks,
 file paths, edge cases, findings. Deepen, don't replace.
 
-**Current sprint pointer:** → Sprint 7 (Sprints 0–6 closed 2026-08-14)
+**Current sprint pointer:** → Sprint 8 (Sprints 0–7 closed 2026-08-14) — owner-gated
 
 ---
 
@@ -762,23 +762,74 @@ stack (two-window 15/15 · persistence 9/9 · CRDT permissions 9/9 · features 1
 
 ---
 
-## Sprint 7 — The demo + verified claims
+## Sprint 7 — The demo + verified claims ✅ CLOSED 2026-08-14
 
 **Intent:** nothing currently in the repo communicates what this is. For a collaborative
 whiteboard the demo *is* the marketing.
 
-- [ ] Storyboard the two-window GIF per MOTION.md's shot list: join ring → live cursors →
+- [x] Storyboard the two-window GIF per MOTION.md's shot list: join ring → live cursors →
       progressive stroke → shape snap → resolved comment. Then record it.
-- [ ] Put it at the top of the README.
-- [ ] Publish measured latency with its method stated (n, percentiles, loopback vs network).
+- [x] Put it at the top of the README.
+- [x] Publish measured latency with its method stated (n, percentiles, loopback vs network).
       Loopback p50 is 0.25 ms; that is not the number to publish as "sync latency".
-- [ ] Every remaining README number traceable to a committed artifact.
+- [x] Every remaining README number traceable to a committed artifact.
 
 **Gate:** each claim in the README maps to an artifact in the repo · the GIF shows the five
 beats above.
 
-**As-shipped delta:** _(fill at close)_
-**Deferred:** _(fill at close)_
+**Verification — PASSED 2026-08-14.**
+
+`docs/demo.gif` — 22.7 s, 2.1 MB, one continuous take recorded from the creator's window while
+a second browser genuinely drives the other side over a real socket. All five beats present
+and confirmed frame by frame: **join** (`ONLINE (2)`, the join toast, the role promotion) ·
+**live cursors** (a remote pointer gliding, with its name chip) · **progressive stroke** (the
+guest's line drawing as it happens) · **shape snap** (a wobbly polygon replaced by a clean
+circle) · **comment left and resolved**. Nothing staged, nothing sped up; regenerate with
+`node benchmarks/record-demo.cjs`.
+
+**Latency, measured rather than asserted** (`benchmarks/sync-latency.cjs`, 30 samples each):
+
+| Environment | p50 | p95 | p99 |
+|---|---|---|---|
+| Loopback | **8 ms** | 9 ms | 9 ms |
+| LAN over Wi-Fi | **7 ms** | 16 ms | 17 ms |
+
+The metric is deliberately *not* a socket ping: it is the time from A committing a finished
+stroke to that element being present in B's document — CRDT update, server relay, remote
+apply and render included. Both timestamps come from `Date.now()` in two contexts of the same
+browser, so there is no clock skew to correct.
+
+Regressions after all Sprint 7 changes: all six e2e gates green, 95/95 unit tests.
+
+**As-shipped delta:**
+- **The demo found a product bug, which is the best argument for recording one.** The guest's
+  hand-drawn zigzag was silently replaced by a straight diagonal: `calculateLinearity`
+  compares each point against its immediate neighbours, so a smooth wave — locally almost
+  straight everywhere — scored as a line. Combined with "accepting a recognition replaces the
+  stroke", an over-confident recogniser was **destroying the user's actual drawing**.
+  Two fixes: `tryLine` now measures **global** straightness (deviation from the chord between
+  the endpoints), and **auto-keep is gated at 0.85 confidence** — above it, doing nothing
+  keeps the clean shape; below it, doing nothing keeps *your* stroke and taking the
+  recognition needs a deliberate click. Silence should never cost you your work.
+- **The eight acceptance harnesses are now committed** to `benchmarks/`, not left in a scratch
+  directory. Every number in the README is reproducible by someone who clones the repo.
+- `benchmarks/README.md` states what the numbers do **not** say: both browsers are on one
+  machine, the LAN row is not two physical devices, there is no internet measurement, and
+  **the portfolio's "50–80 ms sync" remains unbacked** — not contradicted, simply about a
+  deployment that does not exist yet.
+- **A stale number caught by the gate's own rule.** The README said shape recognition was
+  447 LOC; the Sprint 5 fixes grew it to 588. Corrected — this is exactly the class of claim
+  the honesty rule exists for, and it went stale within one sprint of being written.
+- README rewritten around the demo: the GIF is the first thing on the page, and there is an
+  explicit **Known limits** table (not deployed · one machine only · no authentication ·
+  offline caches the document not the app shell · synchronised camera unfinished).
+
+**Deferred:**
+- **No deployed latency measurement**, because nothing is deployed. That is Sprint 8, and the
+  number will be measured then rather than estimated now.
+- The GIF is 2.1 MB. Acceptable for a README, but it is a GIF of a dark UI — an `.mp4` would
+  be a fraction of the size. GitHub renders both; left as a GIF because it autoplays inline
+  everywhere, including in previews that do not run video.
 
 ---
 

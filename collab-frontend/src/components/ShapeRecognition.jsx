@@ -12,6 +12,9 @@ import { recognizeShape, simplifyStroke } from '../utils/shapeRecognition';
  * @param {boolean} props.isDrawing - Whether user is actively drawing
  * @returns {React.ReactElement}
  */
+/** Below this, the recognition is offered but never applied on its own. */
+const AUTO_KEEP_CONFIDENCE = 0.85;
+
 export default function ShapeRecognition({ currentStroke, onAcceptSuggestion, isDrawing }) {
   const [suggestion, setSuggestion] = useState(null);
   const [confidence, setConfidence] = useState(0);
@@ -48,12 +51,19 @@ export default function ShapeRecognition({ currentStroke, onAcceptSuggestion, is
    *
    * Ignoring is the common case, so ignoring has to be the cheap one. Doing nothing accepts
    * the clean shape; dismissing is the deliberate act that keeps the rough stroke.
+   *
+   * WITH ONE LIMIT. Accepting a recognition REPLACES the stroke, so auto-keeping a marginal
+   * guess silently destroys what the user actually drew — which is exactly what happened
+   * while recording the demo: a hand-drawn zigzag was swapped for a straight diagonal. Above
+   * the confident threshold, doing nothing keeps the clean shape. Below it, doing nothing
+   * keeps YOUR stroke, and taking the recognition needs a deliberate click. Silence should
+   * never cost you your work.
    */
   useEffect(() => {
     if (!showSuggestion || !suggestion) return;
     const t = setTimeout(() => {
       const pending = acceptedRef.current;
-      if (pending) {
+      if (pending && pending.confidence >= AUTO_KEEP_CONFIDENCE) {
         onAcceptSuggestion({
           shape: pending.shape,
           bounds: pending.bounds,
@@ -117,7 +127,7 @@ export default function ShapeRecognition({ currentStroke, onAcceptSuggestion, is
             looks like a {formatShapeName(suggestion.shape).toLowerCase()} — keep?
           </div>
           <div className="suggestion-confidence">
-            {(confidence * 100).toFixed(0)}% · keeping in 3s
+            {(confidence * 100).toFixed(0)}% · {confidence >= AUTO_KEEP_CONFIDENCE ? 'keeping in 3s' : 'keep to apply'}
           </div>
         </div>
 
