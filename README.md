@@ -11,6 +11,7 @@ other side over a real socket. Someone joins · their cursor moves · their stro
 happens · a rough circle snaps to a clean one · a comment is left and resolved. Nothing is
 staged or sped up — regenerate it with `node benchmarks/record-demo.cjs`.*
 
+[![CI](https://github.com/br9704/collab-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/br9704/collab-dashboard/actions/workflows/ci.yml)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---

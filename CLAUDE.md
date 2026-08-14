@@ -190,9 +190,28 @@ that, doing nothing keeps *your* stroke. Silence must never cost a user their wo
 The "50–80ms sync" portfolio line is still **unbacked** — not contradicted, just about a
 deployment that does not exist. It gets measured in Sprint 8 or dropped.
 
-Still open, all owner-gated (Sprint 8): nothing deployed, commits authored by "Subagent", CI
-has never run on GitHub because nothing is pushed. Synchronised camera is published over
-Awareness but nothing consumes it; horizontal scaling is unsupported. Both documented.
+**Sprint 8 closed — ALL NINE SPRINTS DONE.** The authorship rewrite ran with approval:
+54/54 commits now attributed to Bruno, dates preserved, working tree byte-identical, pushed
+with `--force-with-lease` (`6248294 → f4fac6f`). **CI ran on GitHub for the first time and
+passed**, both jobs. A pre-publication audit — not in the plan, and it should have been —
+caught `.claude/`/`.codex/`/`.cursor/` being tracked with absolute local paths, and a
+benchmark hardcoded to this laptop. Both fixed before the push. Two history bundles were taken
+first, because `git filter-repo` rewrites the backup branch too.
+
+Three items are Bruno's to run, by his own choice, each with its exact command in
+`docs/RELEASE.md`: deploy to Fly + Vercel, measure deployed latency, update the portfolio
+copy. The `[MEASURE ON DEPLOY]` placeholder stays until there is a real number — the
+"50–80ms sync" line is still unbacked.
+
+**The ENGINEERPROMPT bar is half met, and saying so is the point.** State survives a server
+restart (verified by killing the process) and two people draw together on one board (15/15,
+including over the LAN against a non-localhost backend). But "two people on *different
+machines* open a *URL*" is not met: nothing is deployed, and every measurement has both
+browsers on one machine.
+
+Still not true, all in the README's Known limits table: no live URL, no internet latency
+figure, one machine only, no authentication, offline caches the document but not the app
+shell, synchronised camera published but unconsumed.
 
 Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 

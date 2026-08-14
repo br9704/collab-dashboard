@@ -10,7 +10,8 @@ with a one-line reason).
 **Rule:** never delete or rewrite content in this file. Expand it in place — add sub-tasks,
 file paths, edge cases, findings. Deepen, don't replace.
 
-**Current sprint pointer:** → Sprint 8 (Sprints 0–7 closed 2026-08-14) — owner-gated
+**Current sprint pointer:** → ALL SPRINTS CLOSED (0–8, 2026-08-14). The work remaining in
+Sprint 8 is owner-executed by Bruno's own decision and is marked `[⏭]` with its reason.
 
 ---
 
@@ -833,20 +834,95 @@ Regressions after all Sprint 7 changes: all six e2e gates green, 95/95 unit test
 
 ---
 
-## Sprint 8 — Owner-gated (D7 — deferred to the very end)
+## Sprint 8 — Owner-gated (D7 — deferred to the very end) ✅ CLOSED 2026-08-14
 
 Each item stops for `ask_human` before acting. None of Sprints 0–7 depends on any of it.
+All four were put to Bruno directly; what he chose to run himself is marked `[⏭]` with the
+reason rather than left ambiguous.
 
-- [ ] Deploy: frontend to Vercel, backend to Fly/Railway free tier. Needs Bruno's accounts.
-- [ ] Measure **deployed** p50/p95 cross-network and update the README with real numbers —
-      this is the only measurement that can honestly back a "sync latency" claim.
-- [ ] `git filter-repo` author rewrite: "Subagent <agent@openclaw>" → Bruno, keeping history.
-      Then force-push. Irreversible on a public repo — explicit go-ahead required.
-- [ ] Update the portfolio copy to match measured reality, replacing the unverified
-      "50–80 ms sync" line.
+- [x] **`git filter-repo` author rewrite + force-push.** Approved, executed, verified.
+      History was 32 commits by `Subagent <agent@openclaw>`, 13 by `Claude Code`, 8 by Bruno.
+      Dry-run first on a throwaway clone; then a backup branch, a bundle of the rewritten
+      history **and a bundle of the original remote state** before touching anything.
+      Result: **54/54 commits attributed to Bruno**, commit count unchanged, every author
+      date preserved, working tree byte-identical (`ad8f7f9` before and after).
+      Pushed with `--force-with-lease`: `6248294 → f4fac6f (forced update)`.
+      GitHub reports a single author across the history.
+- [x] **CI ran on GitHub for the first time — and passed.** `build + test: success`,
+      `end-to-end smoke: success`. Sprint 5 could only verify that workflow by executing its
+      steps locally and said so; this is the real thing.
+- [x] **Pre-publication audit**, done before the push rather than after:
+      - `.mcp.json` (which holds an auth token) was already gitignored — confirmed, not assumed
+      - `.claude/`, `.codex/`, `.cursor/` **were** tracked. Per-checkout agent wiring, full of
+        absolute paths to one machine. Untracked and gitignored.
+      - `benchmarks/persistence.cjs` hardcoded `/Users/brunojaamaa/...`, so it could only ever
+        have run on this laptop. Derived from `__dirname` now, re-verified 9/9.
+      - scanned the index for token-shaped strings: none
+- [⏭] **Deploy to Fly + Vercel — Bruno runs it.** Asked directly; he chose the runbook. Neither
+      `flyctl` nor `vercel` is installed here and both need his login, so this could not have
+      been completed autonomously in any case. `docs/RELEASE.md` carries the exact commands,
+      the volume that must exist or every deploy silently wipes every board, and the
+      verification steps including the restart check.
+      De-risked as far as possible without Docker: a production-only dependency install boots
+      the server, honours `CORS_ORIGIN=*`, and the image's own `HEALTHCHECK` exits 0.
+      **The Dockerfile itself is unbuilt** — no Docker daemon on this machine — so a first
+      `fly deploy` may still surface a native-module issue with `better-sqlite3`. Written into
+      the runbook rather than discovered on the day.
+- [⏭] **Deployed latency measurement — blocked on the deploy.** `benchmarks/sync-latency.cjs`
+      takes an `APP_URL`; the command is in the runbook. Nothing is estimated meanwhile.
+- [⏭] **Portfolio copy — drafted, not published.** Bruno chose a placeholder until there is a
+      real number. Replacement copy is in `docs/RELEASE.md` with `[MEASURE ON DEPLOY]` where
+      the figure goes. **The "50–80 ms sync" line remains unbacked** — not contradicted by
+      anything measured, simply about a deployment that does not exist yet.
 
 **Gate:** two people on different machines open a URL and draw together, and the state
 survives a server restart. That is the bar set in ENGINEERPROMPT.md.
 
-**As-shipped delta:** _(fill at close)_
-**Deferred:** _(fill at close)_
+**Gate status — honestly, half met.**
+
+*Met, and verified:* the state survives a server restart — `pkill` the process, start a new
+one, and 1,670 px of ink is restored exactly into a browser profile with an empty IndexedDB.
+Two people draw together on one board with live cursors, correct roles and working undo:
+15/15 in two real browsers, and again over the LAN against a non-localhost backend with only
+environment variables changed.
+
+*Not met:* "two people on **different machines** open a **URL**". There is no URL, because
+nothing is deployed, and every measurement so far has both browsers on one machine. That is
+one runbook away and the runbook is written — but it is not done, and the bar says what it says.
+
+**As-shipped delta:**
+- The **pre-publication audit was not in the plan and should have been.** Pushing is the one
+  irreversible step where "look at what you are about to publish" has to happen *before*, and
+  it caught two real problems: tracked machine-specific config, and a benchmark that could
+  only ever run on the author's laptop.
+- **Bundling both histories before the force-push** was also not in the plan. `git filter-repo`
+  rewrites every ref *including the backup branch you just made*, which makes the obvious
+  precaution useless. The two bundles are the real undo.
+
+**Deferred:** nothing further. The three `[⏭]` items are Bruno's to run, by his own decision,
+and each has its exact command written down.
+
+---
+
+## Close-out — 2026-08-14
+
+All nine sprints (0–8) closed. Every gate passed with recorded evidence.
+
+| | Then | Now |
+|---|---|---|
+| Core journey | creator assigned `viewer`, could not draw · `ONLINE (0)` | two windows draw together, 15/15 |
+| Cursors | `cursor-move` never emitted by the app | interpolated, time-based, verified at 30/60/144 Hz |
+| Persistence | `new Map()`, sessions **deleted** when the last user left | Yjs + SQLite; survives `pkill`, converges offline |
+| Dead features | 13 client events with no server handler | 0 orphaned events |
+| Tests | 0, against 15 test-report markdown files | **95**, which found 7 real bugs |
+| CI | none | green on GitHub, both jobs |
+| Deployable | hardcoded localhost ×3, zero HTTP routes | env-driven, verified on the LAN, `/health` |
+| Design | default-browser white, emoji controls, overlapping panels | SIGNAL in one file, 4,468 → ~950 CSS lines |
+| Demo | nothing communicated what it was | 22.7 s two-window recording at the top of the README |
+| Authorship | 32 commits by "Subagent" | 54/54 by Bruno |
+| Honesty | "Persistence" + "AI shape completion" + unbacked "50–80ms" | every claim traceable, limits tabulated |
+
+**What is still not true, stated plainly:** it is not deployed, so there is no live URL and no
+internet latency figure; it runs on one machine only; there is no authentication; offline
+caches the document but not the app shell; synchronised camera is published over Awareness
+with nothing consuming it. All five are in the README's *Known limits* table.
