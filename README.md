@@ -25,12 +25,13 @@ These are measured, not suspected. Each links to the sprint that closes it.
 | ~~bare `socket.off(event)` unhooks other components~~ | ~~remote cursors silently stopped rendering~~ | **fixed, Sprint 1** |
 | ~~`Session.undo()` only moves an index~~ | ~~Ctrl+Z changed a number; no ink disappeared~~ | **fixed, Sprint 1** |
 | ~~13 client events have no server handler~~ | ~~Templates, Smart Shapes, Layers, Text Formatting and Video Embed did nothing at all~~ | **fixed, Sprint 3** |
-| Template connectors are not drawn | Flowchart templates load as unconnected boxes | Sprint 4 |
-| Export (PNG/SVG/JSON) is not wired up | The export dialog does nothing | Sprint 4 |
+| ~~Template connectors not drawn~~ | ~~flowcharts loaded as unconnected boxes~~ | **fixed, Sprint 4** |
+| ~~Export not wired up~~ | ~~the export dialog did nothing~~ | **fixed, Sprint 4** |
 | ~~All state in memory; sessions deleted when the last user leaves~~ | ~~nothing survived a restart~~ | **fixed, Sprint 2** |
 | Socket URL and CORS origins are hardcoded to `localhost` | Cannot be deployed anywhere yet | Sprint 6 |
 | Zero tests | No regression safety | Sprint 5 |
-| UI is unstyled against the project's design system | Reads as unfinished; panels overlap | Sprint 4 |
+| ~~UI unstyled; panels overlap~~ | ~~read as unfinished~~ | **fixed, Sprint 4** |
+| Synchronised camera has no UI | Peers publish their camera; nothing consumes it | open |
 
 ---
 
@@ -59,6 +60,15 @@ Verified by running the server and driving it with scripted clients and real bro
 - **Layers, templates, smart shapes, text formatting and video embeds** — all document
   state, so all of it merges, persists and reaches every collaborator. Loading a template is
   additive and atomic: one transaction, one undo step, and it never deletes anyone's work.
+- **Motion built for collaboration, not decoration** — on a shared whiteboard most movement
+  on screen is other people. Remote cursors are eased with a time-based curve (identical at
+  30/60/144 Hz) so they read as a hand rather than a teleport; remote strokes **draw
+  progressively** as their points stream over the Awareness channel, then reconcile to the
+  canonical path. Your own ink is painted before any document write — all latency budget is
+  spent on remote smoothness, never local.
+- **One design system, in one file** — `src/styles/signal.css`. Grayscale on hairline steel
+  with a single amber accent, monospace throughout, square corners, no emoji.
+  `prefers-reduced-motion` makes cursors snap and stops every animation.
 - **Latency instrumentation** — a `latency-ping`/`latency-pong` round trip you can measure.
 
 ### Measured latency

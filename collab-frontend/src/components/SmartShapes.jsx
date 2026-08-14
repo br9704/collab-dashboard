@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { SHAPE_CONFIG, SHAPE_TYPES } from '../utils/shapeUtils';
-import './SmartShapes.css';
 
 /**
  * SmartShapes - Toolbar for selecting and creating smart shapes
@@ -90,7 +89,7 @@ export default function SmartShapes({ onShapeSelected, selectedShape }) {
         {showConnectorOptions && (
           <div className="connector-style-group">
             {[
-              { value: 'line', label: '→ Straight', icon: '➤' },
+              { value: 'line', label: '→ Straight', icon: '→' },
               { value: 'curve', label: '↗ Curved', icon: '⤴' },
               { value: 'orthogonal', label: '⊣ Orthogonal', icon: '⊠' }
             ].map((option) => (
@@ -111,7 +110,7 @@ export default function SmartShapes({ onShapeSelected, selectedShape }) {
 
       {/* Quick tips */}
       <div className="smart-shapes-tips">
-        <div className="tips-header">💡 Quick Tips</div>
+        <div className="tips-header">> Quick Tips</div>
         <ul className="tips-list">
           <li>Select a shape and click on canvas to create</li>
           <li>Connect shapes by dragging between them</li>

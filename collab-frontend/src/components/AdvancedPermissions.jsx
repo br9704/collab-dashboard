@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { BASE_ROLES, PERMISSIONS, ROLE_PERMISSIONS } from '../utils/permissions';
-import './AdvancedPermissions.css';
 
 /**
  * AdvancedPermissions - Granular permission management UI
@@ -249,10 +248,10 @@ export default function AdvancedPermissions({ users, permissionManager, onPermis
  */
 function formatRoleName(role) {
   const names = {
-    owner: '👑 Owner',
-    editor: '✏️ Editor',
-    commenter: '💬 Commenter',
-    viewer: '👁️ Viewer'
+    owner: '* Owner',
+    editor: '+ Editor',
+    commenter: ':: Commenter',
+    viewer: '· Viewer'
   };
   return names[role] || role;
 }

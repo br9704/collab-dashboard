@@ -143,6 +143,9 @@ export function useCollabDoc({ url, sessionId, token, userId }) {
           cursor: state.cursor || null,
           camera: state.camera || null,
           isDrawing: !!state.isDrawing,
+          // The stroke currently being drawn, streamed live. Ephemeral by construction:
+          // it exists only while the pen is down and never touches the document.
+          liveStroke: state.liveStroke || null,
         });
       });
       setPeers(states);
@@ -206,6 +209,21 @@ export function useCollabDoc({ url, sessionId, token, userId }) {
         providerRef.current?.awareness?.setLocalStateField('camera', camera),
       setDrawing: (isDrawing) =>
         providerRef.current?.awareness?.setLocalStateField('isDrawing', isDrawing),
+
+      /**
+       * Publish the in-progress stroke so collaborators watch it DRAW rather than see it
+       * appear finished (MOTION.md: "the other person's line draws").
+       *
+       * This is why it goes over Awareness and not into the document: rule 1 of the document
+       * model is one CRDT operation per finished stroke. Streaming points into the Y.Doc
+       * would mean thousands of un-compactable operations per minute. Awareness is ephemeral,
+       * so the live preview costs nothing and is discarded the moment the pen lifts.
+       */
+      setLiveStroke: (points, color, width) =>
+        providerRef.current?.awareness?.setLocalStateField(
+          'liveStroke',
+          points ? { points, color, width } : null
+        ),
 
       /** Force a fresh document connection so a changed role's read-only flag is applied. */
       reconnect: () => setReconnectNonce((n) => n + 1),

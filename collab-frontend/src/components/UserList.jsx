@@ -1,4 +1,3 @@
-import './UserList.css';
 
 /**
  * UserList — displays connected users with color-coded avatars and role badges.
@@ -15,17 +14,24 @@ const TOOL_GLYPH = {
 };
 
 export default function UserList({ users, sessionMembers, currentUserId, userRole, peerTools }) {
-  const getColor = (index) => {
-    const colors = ['#ff6b6b', '#4ecdc4', '#6b7280', '#ffa502', '#a8e6cf'];
-    return colors[index % colors.length];
+  // Same hash and the same shades as CursorPresence, so a person's dot in this list and
+  // their cursor on the board are always the same colour.
+  const getColor = (userId) => {
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      hash = ((hash << 5) - hash) + userId.charCodeAt(i);
+      hash |= 0;
+    }
+    const shades = ['#f0ece4', '#98928a', '#55504a', '#c9c3b8', '#7d776f'];
+    return shades[Math.abs(hash) % shades.length];
   };
 
   const getRoleIcon = (role) => {
     switch(role) {
-      case 'creator': return '👑';
-      case 'editor': return '✏️';
-      case 'viewer': return '👁️';
-      default: return '👤';
+      case 'creator': return '*';
+      case 'editor': return '+';
+      case 'viewer': return '·';
+      default: return '~';
     }
   };
 
@@ -46,7 +52,7 @@ export default function UserList({ users, sessionMembers, currentUserId, userRol
         
         return (
           <div key={userId} className="user-item">
-            <span className="user-dot" style={{ background: getColor(i) }} />
+            <span className="user-dot" style={{ background: getColor(userId) }} />
             <span className="user-name">
               {userId.slice(0, 8)}
               {userId === currentUserId && <span className="you-badge">(you)</span>}

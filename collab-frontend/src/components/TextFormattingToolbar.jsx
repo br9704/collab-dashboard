@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import './TextFormattingToolbar.css';
 
 /**
  * TextFormattingToolbar — floating toolbar for text styling.

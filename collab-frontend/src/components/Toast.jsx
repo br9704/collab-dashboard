@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react';
-import './Toast.css';
 
 /**
  * Toast — individual toast notification that auto-dismisses after 3 seconds.
@@ -18,27 +17,13 @@ const Toast = ({ message, type = 'info', onClose }) => {
     return () => clearTimeout(timer);
   }, [onClose]);
 
+  /**
+   * Monospace glyphs rather than SVG icons: SIGNAL uses no pictographs, and an unsized
+   * inline <svg> rendered at the container's full height.
+   */
   const getIcon = () => {
-    switch (type) {
-      case 'success':
-        return (
-          <svg className="toast-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        );
-      case 'warning':
-        return (
-          <svg className="toast-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        );
-      default:
-        return (
-          <svg className="toast-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-    }
+    const glyph = { success: 'OK', warning: '!!', error: '!!' }[type] || '··';
+    return <span className="toast-icon" aria-hidden="true">{glyph}</span>;
   };
 
   return (

@@ -1,4 +1,3 @@
-import './UndoRedoControls.css';
 
 /**
  * UndoRedoControls — undo/redo for the local user.

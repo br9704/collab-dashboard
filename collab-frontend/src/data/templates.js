@@ -30,7 +30,7 @@ export const TEMPLATES = {
         y: 50,
         width: 100,
         height: 60,
-        color: '#4CAF50',
+        color: '#98928a',
         label: 'Start',
         layerId: 'layer-shapes'
       },
@@ -41,7 +41,7 @@ export const TEMPLATES = {
         y: 150,
         width: 150,
         height: 80,
-        color: '#2196F3',
+        color: '#98928a',
         label: 'Process Step 1',
         layerId: 'layer-shapes'
       },
@@ -52,7 +52,7 @@ export const TEMPLATES = {
         y: 300,
         width: 150,
         height: 120,
-        color: '#FF9800',
+        color: '#ffb000',
         label: 'Decision?',
         layerId: 'layer-shapes'
       },
@@ -63,7 +63,7 @@ export const TEMPLATES = {
         y: 300,
         width: 150,
         height: 80,
-        color: '#2196F3',
+        color: '#98928a',
         label: 'Process Step 2',
         layerId: 'layer-shapes'
       },
@@ -74,7 +74,7 @@ export const TEMPLATES = {
         y: 500,
         width: 100,
         height: 60,
-        color: '#F44336',
+        color: '#ffb000',
         label: 'End',
         layerId: 'layer-shapes'
       }
@@ -107,7 +107,7 @@ export const TEMPLATES = {
         y: 20,
         width: 200,
         height: 40,
-        color: '#E0E0E0',
+        color: '#2c2925',
         label: 'TO DO',
         layerId: 'layer-kanban'
       },
@@ -118,7 +118,7 @@ export const TEMPLATES = {
         y: 20,
         width: 200,
         height: 40,
-        color: '#E0E0E0',
+        color: '#2c2925',
         label: 'IN PROGRESS',
         layerId: 'layer-kanban'
       },
@@ -129,7 +129,7 @@ export const TEMPLATES = {
         y: 20,
         width: 200,
         height: 40,
-        color: '#E0E0E0',
+        color: '#2c2925',
         label: 'DONE',
         layerId: 'layer-kanban'
       },
@@ -141,7 +141,7 @@ export const TEMPLATES = {
         y: 80,
         width: 180,
         height: 60,
-        color: '#BBDEFB',
+        color: '#1b1916',
         label: 'Task 1',
         layerId: 'layer-kanban-items'
       },
@@ -152,7 +152,7 @@ export const TEMPLATES = {
         y: 80,
         width: 180,
         height: 60,
-        color: '#FFF9C4',
+        color: '#1b1916',
         label: 'Task 2',
         layerId: 'layer-kanban-items'
       },
@@ -163,7 +163,7 @@ export const TEMPLATES = {
         y: 80,
         width: 180,
         height: 60,
-        color: '#C8E6C9',
+        color: '#1b1916',
         label: 'Task 3',
         layerId: 'layer-kanban-items'
       }
@@ -189,7 +189,7 @@ export const TEMPLATES = {
         y: 20,
         width: 280,
         height: 500,
-        color: '#000000',
+        color: '#f0ece4',
         filled: false,
         width: 3,
         layerId: 'layer-wireframe'
@@ -202,7 +202,7 @@ export const TEMPLATES = {
         y: 30,
         width: 260,
         height: 50,
-        color: '#4b5563',
+        color: '#98928a',
         label: 'Header',
         layerId: 'layer-wireframe'
       },
@@ -214,7 +214,7 @@ export const TEMPLATES = {
         y: 90,
         width: 260,
         height: 80,
-        color: '#E0E0E0',
+        color: '#2c2925',
         label: 'Content Block 1',
         layerId: 'layer-wireframe'
       },
@@ -226,7 +226,7 @@ export const TEMPLATES = {
         y: 180,
         width: 260,
         height: 80,
-        color: '#E0E0E0',
+        color: '#2c2925',
         label: 'Content Block 2',
         layerId: 'layer-wireframe'
       },
@@ -238,7 +238,7 @@ export const TEMPLATES = {
         y: 270,
         width: 260,
         height: 80,
-        color: '#E0E0E0',
+        color: '#2c2925',
         label: 'Content Block 3',
         layerId: 'layer-wireframe'
       },
@@ -250,7 +250,7 @@ export const TEMPLATES = {
         y: 360,
         width: 260,
         height: 150,
-        color: '#BDBDBD',
+        color: '#55504a',
         label: 'Navigation',
         layerId: 'layer-wireframe'
       }
@@ -275,7 +275,7 @@ export const TEMPLATES = {
         y: 20,
         width: 100,
         height: 40,
-        color: '#2196F3',
+        color: '#98928a',
         label: 'User',
         layerId: 'layer-sequence'
       },
@@ -286,7 +286,7 @@ export const TEMPLATES = {
         y: 20,
         width: 100,
         height: 40,
-        color: '#2196F3',
+        color: '#98928a',
         label: 'System',
         layerId: 'layer-sequence'
       },
@@ -297,7 +297,7 @@ export const TEMPLATES = {
         y: 20,
         width: 100,
         height: 40,
-        color: '#2196F3',
+        color: '#98928a',
         label: 'Database',
         layerId: 'layer-sequence'
       },
@@ -308,7 +308,7 @@ export const TEMPLATES = {
         x: 100,
         y: 120,
         points: [{ x: 100, y: 120 }, { x: 300, y: 120 }],
-        color: '#333333',
+        color: '#f0ece4',
         label: 'Request',
         layerId: 'layer-sequence'
       },
@@ -318,7 +318,7 @@ export const TEMPLATES = {
         x: 300,
         y: 160,
         points: [{ x: 300, y: 160 }, { x: 500, y: 160 }],
-        color: '#333333',
+        color: '#f0ece4',
         label: 'Query',
         layerId: 'layer-sequence'
       }
@@ -343,7 +343,7 @@ export const TEMPLATES = {
         y: 250,
         width: 80,
         height: 80,
-        color: '#FF5722',
+        color: '#ffb000',
         label: 'Main Topic',
         layerId: 'layer-mindmap'
       },
@@ -355,7 +355,7 @@ export const TEMPLATES = {
         y: 100,
         width: 60,
         height: 60,
-        color: '#FF9800',
+        color: '#ffb000',
         label: 'Branch 1',
         layerId: 'layer-mindmap'
       },
@@ -367,7 +367,7 @@ export const TEMPLATES = {
         y: 100,
         width: 60,
         height: 60,
-        color: '#FF9800',
+        color: '#ffb000',
         label: 'Branch 2',
         layerId: 'layer-mindmap'
       },
@@ -379,7 +379,7 @@ export const TEMPLATES = {
         y: 420,
         width: 60,
         height: 60,
-        color: '#FF9800',
+        color: '#ffb000',
         label: 'Branch 3',
         layerId: 'layer-mindmap'
       }

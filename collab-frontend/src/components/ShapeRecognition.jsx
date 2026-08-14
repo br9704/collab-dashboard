@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { recognizeShape, simplifyStroke } from '../utils/shapeRecognition';
-import './ShapeRecognition.css';
 
 /**
  * ShapeRecognition - suggests snapping a rough stroke to a clean shape
@@ -17,6 +16,7 @@ export default function ShapeRecognition({ currentStroke, onAcceptSuggestion, is
   const [suggestion, setSuggestion] = useState(null);
   const [confidence, setConfidence] = useState(0);
   const [showSuggestion, setShowSuggestion] = useState(false);
+  const acceptedRef = useRef(null);
 
   /**
    * Analyze stroke when user finishes drawing
@@ -36,6 +36,7 @@ export default function ShapeRecognition({ currentStroke, onAcceptSuggestion, is
       setSuggestion(recognition);
       setConfidence(recognition.confidence);
       setShowSuggestion(true);
+      acceptedRef.current = recognition;
     } else {
       setSuggestion(null);
       setShowSuggestion(false);
@@ -43,10 +44,34 @@ export default function ShapeRecognition({ currentStroke, onAcceptSuggestion, is
   }, [currentStroke, isDrawing]);
 
   /**
+   * MOTION.md: "a dismissible chip appears for 3s; ignoring it KEEPS the recognition."
+   *
+   * Ignoring is the common case, so ignoring has to be the cheap one. Doing nothing accepts
+   * the clean shape; dismissing is the deliberate act that keeps the rough stroke.
+   */
+  useEffect(() => {
+    if (!showSuggestion || !suggestion) return;
+    const t = setTimeout(() => {
+      const pending = acceptedRef.current;
+      if (pending) {
+        onAcceptSuggestion({
+          shape: pending.shape,
+          bounds: pending.bounds,
+          originalPoints: currentStroke,
+        });
+      }
+      setShowSuggestion(false);
+      setSuggestion(null);
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [showSuggestion, suggestion, currentStroke, onAcceptSuggestion]);
+
+  /**
    * Handle suggestion acceptance
    */
   const handleAcceptSuggestion = () => {
     if (suggestion) {
+      acceptedRef.current = null;
       onAcceptSuggestion({
         shape: suggestion.shape,
         bounds: suggestion.bounds,
@@ -62,7 +87,9 @@ export default function ShapeRecognition({ currentStroke, onAcceptSuggestion, is
    * Dismiss suggestion
    */
   const handleDismiss = () => {
+    acceptedRef.current = null;   // cancel the auto-keep
     setShowSuggestion(false);
+    setSuggestion(null);
   };
 
   if (!showSuggestion || !suggestion) {
@@ -70,27 +97,27 @@ export default function ShapeRecognition({ currentStroke, onAcceptSuggestion, is
   }
 
   const shapeEmoji = {
-    rectangle: '⬜',
-    circle: '⚫',
-    triangle: '🔺',
-    diamond: '💠',
-    line: '📏',
-    arrow: '➤'
+    rectangle: '▢',
+    circle: '○',
+    triangle: '△',
+    diamond: '◇',
+    line: '—',
+    arrow: '→'
   };
 
   return (
     <div className="shape-recognition-suggestion">
       <div className="suggestion-content">
         <div className="suggestion-icon">
-          {shapeEmoji[suggestion.shape] || '✨'}
+          {shapeEmoji[suggestion.shape] || '*'}
         </div>
         
         <div className="suggestion-text">
           <div className="suggestion-title">
-            Convert to {formatShapeName(suggestion.shape)}?
+            looks like a {formatShapeName(suggestion.shape).toLowerCase()} — keep?
           </div>
           <div className="suggestion-confidence">
-            Confidence: {(confidence * 100).toFixed(0)}%
+            {(confidence * 100).toFixed(0)}% · keeping in 3s
           </div>
         </div>
 
@@ -100,14 +127,14 @@ export default function ShapeRecognition({ currentStroke, onAcceptSuggestion, is
             onClick={handleAcceptSuggestion}
             title="Accept suggestion (Y)"
           >
-            ✓ Accept
+            keep
           </button>
           <button
             className="suggestion-dismiss"
             onClick={handleDismiss}
             title="Dismiss (N)"
           >
-            ✕ Cancel
+            undo
           </button>
         </div>
       </div>

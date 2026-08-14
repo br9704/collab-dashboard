@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react';
-import './VideoEmbedCanvas.css';
 
 /**
  * VideoEmbedCanvas - Renders embedded videos as draggable HTML overlays
@@ -145,7 +144,7 @@ function VideoEmbedItem({ embed, camera, onMove, onRemove, canEdit }) {
       {showControls && canEdit && (
         <div className="video-embed-drag-bar">
           <span className="drag-bar-title" title={embed.name || embed.url}>
-            🎬 {embed.name || (embed.type === 'youtube' ? 'YouTube' : embed.type === 'vimeo' ? 'Vimeo' : 'Video')}
+            :: {embed.name || (embed.type === 'youtube' ? 'YouTube' : embed.type === 'vimeo' ? 'Vimeo' : 'Video')}
           </span>
           <button
             className="video-embed-remove-btn"
@@ -181,7 +180,7 @@ function VideoEmbedItem({ embed, camera, onMove, onRemove, canEdit }) {
         />
       ) : (
         <div className="video-embed-error">
-          ⚠️ Unable to render video
+          ! Unable to render video
         </div>
       )}
     </div>

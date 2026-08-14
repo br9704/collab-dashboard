@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react';
-import './VideoEmbed.css';
 
 /**
  * VideoEmbed - Embed and annotate videos on canvas
@@ -151,7 +150,7 @@ export default function VideoEmbed({ onVideoEmbed, isOpen, onClose }) {
                 setError(null);
               }}
             >
-              📺 YouTube
+              [v] YouTube
             </button>
             <button
               className={`source-tab ${videoType === 'vimeo' ? 'active' : ''}`}
@@ -169,7 +168,7 @@ export default function VideoEmbed({ onVideoEmbed, isOpen, onClose }) {
                 setError(null);
               }}
             >
-              📁 Upload
+              [f] Upload
             </button>
           </div>
 
@@ -202,7 +201,7 @@ export default function VideoEmbed({ onVideoEmbed, isOpen, onClose }) {
                 className="video-upload-btn"
                 onClick={() => fileInputRef.current?.click()}
               >
-                📂 Choose Video File
+                [f] Choose Video File
               </button>
               <input
                 ref={fileInputRef}
@@ -214,7 +213,7 @@ export default function VideoEmbed({ onVideoEmbed, isOpen, onClose }) {
               
               {localFile && (
                 <div className="video-file-info">
-                  <div className="file-icon">📹</div>
+                  <div className="file-icon">[v]</div>
                   <div className="file-details">
                     <div className="file-name">{localFile.name}</div>
                     <div className="file-size">
@@ -283,7 +282,7 @@ export default function VideoEmbed({ onVideoEmbed, isOpen, onClose }) {
           {/* Error message */}
           {error && (
             <div className="video-error">
-              ⚠️ {error}
+              ! {error}
             </div>
           )}
 

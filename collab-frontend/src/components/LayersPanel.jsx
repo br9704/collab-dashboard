@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import './LayersPanel.css';
 
 /**
  * LayersPanel — sidebar for managing drawing layers.
@@ -151,7 +150,7 @@ export default function LayersPanel({
                     onClick={() => handleToggleVisibility(layer.id)}
                     title={layer.visible ? 'Hide layer' : 'Show layer'}
                   >
-                    {layer.visible ? '👁️' : '🚫'}
+                    {layer.visible ? '·' : '×'}
                   </button>
 
                   <button
@@ -159,7 +158,7 @@ export default function LayersPanel({
                     onClick={() => handleToggleLock(layer.id)}
                     title={layer.locked ? 'Unlock layer' : 'Lock layer'}
                   >
-                    {layer.locked ? '🔒' : '🔓'}
+                    {layer.locked ? '[L]' : '[ ]'}
                   </button>
                 </>
               )}

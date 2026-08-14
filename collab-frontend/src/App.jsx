@@ -36,7 +36,6 @@ import AdvancedPermissions from './components/AdvancedPermissions';
 import { useToast } from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 
-import './App.css';
 
 const SOCKET_URL = 'http://localhost:3001';
 const COLLAB_URL = 'ws://localhost:3001/collaboration';
@@ -241,6 +240,7 @@ export default function App() {
           <Canvas
             sessionState={session}
             doc={doc}
+            comments={doc.comments}
             currentUserId={clientId}
             userRole={userRole}
             activeLayerId={activeLayerId || doc.defaultLayerId}
@@ -313,7 +313,7 @@ export default function App() {
               aria-expanded={showActivityLog}
               title="View session activity"
             >
-              📋 Activity
+              :: Activity
             </button>
 
             {selectedElement && (
@@ -324,7 +324,7 @@ export default function App() {
                 aria-expanded={showComments}
                 title="View/add comments"
               >
-                💬 Comments
+                :: Comments
               </button>
             )}
 
@@ -336,7 +336,7 @@ export default function App() {
                 aria-expanded={showRoles}
                 title="Manage user roles"
               >
-                👥 Roles
+                :: Roles
               </button>
             )}
 
@@ -348,7 +348,7 @@ export default function App() {
                 aria-expanded={showLayers}
                 title="Manage drawing layers"
               >
-                📚 Layers
+                :: Layers
               </button>
             )}
 
@@ -359,7 +359,7 @@ export default function App() {
                 aria-label="Open template manager"
                 title="Load a pre-made whiteboard template"
               >
-                🗂️ Templates
+                :: Templates
               </button>
             )}
 
@@ -374,7 +374,7 @@ export default function App() {
                 aria-expanded={showSmartShapes}
                 title="Smart shapes and flowchart elements"
               >
-                🔷 Shapes
+                :: Shapes
               </button>
             )}
 
@@ -385,7 +385,7 @@ export default function App() {
                 aria-label="Open video embed dialog"
                 title="Embed a video on the canvas"
               >
-                🎬 Video
+                :: Video
               </button>
             )}
 
@@ -397,7 +397,7 @@ export default function App() {
                 aria-expanded={showAdvancedPermissions}
                 title="Manage granular permissions"
               >
-                🔐 Permissions
+                :: Permissions
               </button>
             )}
 

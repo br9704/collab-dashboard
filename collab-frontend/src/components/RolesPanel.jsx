@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import './RolesPanel.css';
 
 /**
  * RolesPanel — admin-only panel for changing user roles.
@@ -42,9 +41,9 @@ export default function RolesPanel({ socket, users, sessionMembers }) {
                   value={currentRole}
                   onChange={(e) => handleRoleChange(userId, e.target.value)}
                 >
-                  <option value="creator">👑 Creator</option>
-                  <option value="editor">✏️ Editor</option>
-                  <option value="viewer">👁️ Viewer</option>
+                  <option value="creator">* Creator</option>
+                  <option value="editor">+ Editor</option>
+                  <option value="viewer">· Viewer</option>
                 </select>
               </div>
             </div>

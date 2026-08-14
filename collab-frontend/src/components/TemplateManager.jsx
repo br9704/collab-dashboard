@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { getAvailableTemplates, getTemplatesByCategory, createCanvasFromTemplate } from '../data/templates';
-import './TemplateManager.css';
 
 /**
  * TemplateManager - UI component for selecting and loading pre-made templates
@@ -63,7 +62,7 @@ export default function TemplateManager({ onLoadTemplate, isOpen, onClose }) {
                 setSelectedTemplate(null);
               }}
             >
-              📊 Flowcharts
+              [g] Flowcharts
             </button>
             <button
               className={`category-tab ${selectedCategory === 'kanban' ? 'active' : ''}`}
@@ -72,7 +71,7 @@ export default function TemplateManager({ onLoadTemplate, isOpen, onClose }) {
                 setSelectedTemplate(null);
               }}
             >
-              📋 Kanban
+              :: Kanban
             </button>
             <button
               className={`category-tab ${selectedCategory === 'wireframe' ? 'active' : ''}`}
@@ -81,7 +80,7 @@ export default function TemplateManager({ onLoadTemplate, isOpen, onClose }) {
                 setSelectedTemplate(null);
               }}
             >
-              📱 Wireframes
+              [m] Wireframes
             </button>
             <button
               className={`category-tab ${selectedCategory === 'diagram' ? 'active' : ''}`}
@@ -90,7 +89,7 @@ export default function TemplateManager({ onLoadTemplate, isOpen, onClose }) {
                 setSelectedTemplate(null);
               }}
             >
-              🔗 Diagrams
+              [l] Diagrams
             </button>
           </div>
 
@@ -154,10 +153,10 @@ export default function TemplateManager({ onLoadTemplate, isOpen, onClose }) {
  */
 function getCategoryIcon(category) {
   const icons = {
-    flowchart: '📊',
-    kanban: '📋',
-    wireframe: '📱',
-    diagram: '🔗'
+    flowchart: '[g]',
+    kanban: '::',
+    wireframe: '[m]',
+    diagram: '[l]'
   };
-  return icons[category] || '📄';
+  return icons[category] || '[d]';
 }

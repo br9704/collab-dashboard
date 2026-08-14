@@ -1,4 +1,3 @@
-import './PresenceHalo.css';
 
 /**
  * PresenceHalo — marks collaborators who are actively drawing.

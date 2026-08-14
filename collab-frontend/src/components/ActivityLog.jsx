@@ -1,4 +1,3 @@
-import './ActivityLog.css';
 
 /**
  * ActivityLog — displays a timestamped feed of session events.
@@ -26,14 +25,14 @@ export default function ActivityLog({ activityLog, users }) {
 
   const getActionLabel = (action) => {
     const labels = {
-      'user-joined': '👤 User joined',
-      'user-left': '👤 User left',
-      'stroke-added': '✏️ Stroke added',
-      'shape-added': '📐 Shape added',
-      'text-added': '📝 Text added',
-      'text-updated': '📝 Text updated',
-      'text-deleted': '📝 Text deleted',
-      'comment-added': '💬 Comment added'
+      'user-joined': '~ User joined',
+      'user-left': '~ User left',
+      'stroke-added': '+ Stroke added',
+      'shape-added': ':: Shape added',
+      'text-added': ':: Text added',
+      'text-updated': ':: Text updated',
+      'text-deleted': ':: Text deleted',
+      'comment-added': ':: Comment added'
     };
     return labels[action] || action;
   };

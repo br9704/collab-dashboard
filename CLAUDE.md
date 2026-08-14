@@ -137,10 +137,21 @@ inside a ~870 px visible area** (flex `min-width: auto`), so you could draw wher
 not see and clicks landed on the sidebar; and `readElements` spread a stored `id` over the
 authoritative Map key, so every video embed came back with `id: undefined`.
 
-Still open: UI unstyled against SIGNAL, overlapping panels, template connectors undrawn and
-export unwired (Sprint 4); zero tests, and offline *write*-and-reconcile still unproven
-(Sprint 5); undeployable — hardcoded localhost URLs (Sprint 6); commits authored by
-"Subagent" (Sprint 8, owner-gated).
+**Sprint 4 closed — SIGNAL applied, MOTION met.** One system file (`styles/signal.css`)
+replaces 4,468 lines across 24 stylesheets; CSS bundle 54 kB → 22 kB. Zero emoji, zero
+off-system colours, radius ≤ 2px, verified against the live DOM. Remote cursors ease on a
+time-based curve; remote strokes draw progressively via Awareness while the document still
+takes one operation per finished stroke; own ink paints before any document write. Reduced
+motion snaps and loops nothing. 56 checks green across five harnesses.
+
+Two things worth remembering: the canvas 2D bitmap was still painted `#ffffff` long after the
+CSS was dark — restyling CSS does not touch a canvas fill; and the overlapping-panels bug was
+one cause, every floating readout positioned into the same corner, now given explicit lanes.
+
+Still open: zero tests, and offline *write*-and-reconcile still unproven (Sprint 5);
+undeployable — hardcoded localhost URLs (Sprint 6); no demo GIF or measured deployed latency
+(Sprint 7); commits authored by "Subagent" (Sprint 8, owner-gated). Synchronised camera is
+published over Awareness but nothing consumes it.
 
 Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 

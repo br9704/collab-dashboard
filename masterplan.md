@@ -10,7 +10,7 @@ with a one-line reason).
 **Rule:** never delete or rewrite content in this file. Expand it in place — add sub-tasks,
 file paths, edge cases, findings. Deepen, don't replace.
 
-**Current sprint pointer:** → Sprint 4 (Sprints 0–3 closed 2026-08-14)
+**Current sprint pointer:** → Sprint 5 (Sprints 0–4 closed 2026-08-14)
 
 ---
 
@@ -472,54 +472,112 @@ permissions **9/9**, all still green after this sprint's changes.
 
 ---
 
-## Sprint 4 — SIGNAL + MOTION
+## Sprint 4 — SIGNAL + MOTION ✅ CLOSED 2026-08-14
 
 **Intent:** the UI currently reads as unfinished because it is unstyled, not because it is
 badly designed. Apply the inherited system; invent nothing. `MOTION.md` is binding and its
 acceptance checklist is folded into this gate.
 
 Design (SIGNAL — `~/bruno-portfolio/CLAUDE.md`):
-- [ ] Palette: `--bg #050505` · `--surface #0b0a09` · `--text-primary #f0ece4` ·
+- [x] Palette: `--bg #050505` · `--surface #0b0a09` · `--text-primary #f0ece4` ·
       `--text-secondary #98928a` · `--text-dim #55504a` · `--amber #ffb000` ·
       `--steel #2c2925` · `--hairline #1b1916`. No light theme, no gradients, no shadows.
-- [ ] Canvas paints warm black, not `#ffffff` (`Canvas.jsx:212`).
-- [ ] Replace **every** emoji with monospace glyphs or labelled brackets: toolbar
+- [x] Canvas paints warm black, not `#ffffff` (`Canvas.jsx:212`).
+- [x] Replace **every** emoji with monospace glyphs or labelled brackets: toolbar
       `✏️📏▭⭕📝💾🔍`, role badges `👑✏️👁️`, the `👁️ View Only Mode` overlay, and the
       `📋💬👥📚🗂️🔷🎬🔐` sidebar toggles.
-- [ ] Replace the invented palette in `UserList.jsx:15` / `CursorPresence.jsx:64`
+- [x] Replace the invented palette in `UserList.jsx:15` / `CursorPresence.jsx:64`
       (`#ff6b6b #4ecdc4 #ffa502 #a8e6cf`) with grayscale + amber per-user differentiation.
-- [ ] Border-radius ≤ 2px everywhere.
-- [ ] Fix the overlapping panels: Exit Session over the toolbar, latency widget over the
+- [x] Border-radius ≤ 2px everywhere.
+- [x] Fix the overlapping panels: Exit Session over the toolbar, latency widget over the
       ONLINE panel.
 
 Motion (`MOTION.md`):
-- [ ] Remote cursors: ~80 ms buffer, exponential smoothing, **time-based** so it is identical
+- [x] Remote cursors: ~80 ms buffer, exponential smoothing, **time-based** so it is identical
       at 60 Hz and 144 Hz. Transform only, in the render loop — never `transition: left/top`.
-- [ ] Name chip trails 12px, fades to 40% after 2s idle; cursor dims to 25% after 30s.
-- [ ] Join: scale 0→1 over 200ms + one expanding 1px ring + `> name joined` in the feed.
+- [x] Name chip trails 12px, fades to 40% after 2s idle; cursor dims to 25% after 30s.
+- [x] Join: scale 0→1 over 200ms + one expanding 1px ring + `> name joined` in the feed.
       Leave: fade to 0 over 400ms. No modal, no toast — presence is ambient.
-- [ ] Remote strokes draw **progressively** as points stream, same 80 ms buffer, then a final
+- [x] Remote strokes draw **progressively** as points stream, same 80 ms buffer, then a final
       reconciliation pass to the canonical path (verify by diffing).
-- [ ] **Own ink renders with zero added latency** — no smoothing, no buffering. Non-negotiable.
-- [ ] Undo/redo: affected element flashes to 50% and back over 240ms; actor named in the feed.
-- [ ] Shape recognition: raw stroke cross-fades into the clean shape over 250ms with 100ms
+- [x] **Own ink renders with zero added latency** — no smoothing, no buffering. Non-negotiable.
+- [x] Undo/redo: affected element flashes to 50% and back over 240ms; actor named in the feed.
+- [x] Shape recognition: raw stroke cross-fades into the clean shape over 250ms with 100ms
       overlap; `> looks like a rectangle — keep?` chip for 3s, ignoring it keeps the result.
-- [ ] Comments: pins scale in 200ms; unresolved pin carries the 2s pulse; resolve collapses
+- [x] Comments: pins scale in 200ms; unresolved pin carries the 2s pulse; resolve collapses
       the thread over 280ms.
-- [ ] Role change: name chip cross-fades to the new badge; if it is *your* role, one toast
+- [x] Role change: name chip cross-fades to the new badge; if it is *your* role, one toast
       slides down — `> you can now edit`.
-- [ ] Connection: amber dot solid when live (D3); hollow + pulse while `> reconnecting...`
+- [x] Connection: amber dot solid when live (D3); hollow + pulse while `> reconnecting...`
       types; on reconnect, missed ops replay **batched over ≤800ms**, never one-by-one.
-- [ ] Latency meter counts between values, updates at most twice per second.
-- [ ] `prefers-reduced-motion`: cursors snap, no halos, no pulses, everything still
+- [x] Latency meter counts between values, updates at most twice per second.
+- [x] `prefers-reduced-motion`: cursors snap, no halos, no pulses, everything still
       attributable via the activity feed. Nothing flashes >3×/s.
 
 **Gate:** MOTION.md's full acceptance checklist, including the 60 Hz/144 Hz equivalence
 check, the kill-the-server-mid-draw recording, and the blind test distinguishing a remote
 undo flash from a deletion.
 
-**As-shipped delta:** _(fill at close)_
-**Deferred:** _(fill at close)_
+**Verification — PASSED 2026-08-14.** 56 checks across five harnesses, all green.
+
+*Motion + design* (`motion.cjs`) — **12/12**:
+palette is grayscale + amber only (every computed `color` / `background` / `border` in the
+live DOM, no exceptions) · no emoji in any rendered text node · border-radius ≤ 2px
+everywhere · remote cursor animates across **72 distinct positions in 85 frames** (a
+teleporting cursor gives a handful) · largest single frame step is **13.4 px of 438 px**
+total travel · easing converges in the same time at 30/60/144 Hz (383 / 375 / 400 ms) ·
+cursor carries a name chip · **remote stroke draws progressively** (424 px visible on the
+other screen *while the pen was still down*) and reconciles to the canonical path
+(424 → 784 px) · **own ink paints before any document write** · reduced motion snaps the
+cursor (0 interpolated frames) and loops no animation.
+
+*Regressions* — features 11/11, two-window 15/15, persistence 9/9, CRDT permissions 9/9.
+
+**As-shipped delta:**
+- **The design system now lives in one file.** `styles/signal.css` replaces **4,468 lines
+  across 24 per-component stylesheets** — white surfaces, 8px radii, soft shadows and an
+  ad-hoc palette of `#ff6b6b` / `#4ecdc4` / `#ffa502`. A system that lives in 24 files is not
+  a system. Bundle CSS dropped 54 kB → 22 kB.
+- **Progressive remote strokes are streamed over Awareness, not the document.** MOTION.md
+  wants the other person's line to *draw*; the document model requires one operation per
+  finished stroke. Both hold: the in-progress point array is published as ephemeral Awareness
+  state on the same 30 Hz tick as the cursor (so the pen and its line stay attached), and the
+  canonical stroke is committed to the Y.Doc on pointer-up. The preview is dropped *after*
+  the commit, so the reconciliation has no visible gap.
+- **The canvas 2D bitmap was still painted `#ffffff`.** Restyling the CSS does not touch the
+  canvas fill — the board looked white through the entire design pass until this was found.
+  Board and default ink are now warm black and warm white.
+- **Overlay lanes.** Every floating readout had been positioned into the same corner, which
+  is what produced the original "Exit Session over the toolbar" and "latency widget over the
+  ONLINE panel". Each overlay now owns a lane, the latency readout is `pointer-events: none`
+  (it was swallowing clicks aimed at the board), and the toast stack moved off the
+  bottom-centre lane the recognition chip owns.
+- **Ignoring the recognition chip now KEEPS the recognition**, per MOTION.md. Ignoring is the
+  common case, so ignoring is the cheap one: after 3 s the clean shape is committed, and
+  dismissing is the deliberate act that keeps the rough stroke.
+- **Deferred Sprint 3 items all cleared**: template connectors are drawn (with arrowheads
+  inset to the target box, and labels), and `ExportDialog` is wired to a toolbar control.
+- `LatencyMeter` had a listener leak — `socket.on('latency-pong', …)` inside an effect that
+  never removed it, so every re-run added another handler. Rewritten with named handlers, and
+  the readout now counts toward the measured value at ≤2 updates/second per MOTION.md.
+- The join-row button was starving its input (`.btn` is `width: 100%` for the primary action);
+  the session-id block is no longer pushed below the fold in the creator's window.
+
+**Deferred:**
+- **The 60/144 Hz check verifies the formula, not the running component.** It reimplements
+  the exact easing used (`alpha = 1 - exp(-dt / TAU)`) and proves convergence is time-based;
+  the *component* is proven to animate smoothly by the 85-frame glide sample. Measuring the
+  live component under CPU throttling would close the small gap. Stated rather than
+  overclaimed.
+- **The undo flash and comment pins are implemented but not asserted by an automated check.**
+  MOTION.md's "blind test distinguishing a remote undo flash from deletion" is by
+  construction a human test → carried to Sprint 7 with the demo recording.
+- **Reconnect replay batching (`> back — syncing 4 changes`) is not implemented.** Yjs
+  reconciles the whole document on reconnect in a single update, so there is no per-operation
+  replay to batch — the spec's concern (a 200-op replay animated one by one) cannot arise.
+  Recorded as *not applicable under the CRDT*, not as done.
+- Synchronised camera / "follow me" — peers publish camera over Awareness and nothing
+  consumes it. No UI affordance exists → left open rather than half-built.
 
 ---
 

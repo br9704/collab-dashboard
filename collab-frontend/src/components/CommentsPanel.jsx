@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import './CommentsPanel.css';
 
 /**
  * CommentsPanel — threaded comments for a selected element.

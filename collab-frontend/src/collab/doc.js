@@ -40,6 +40,7 @@ export const KIND = {
   SHAPE: 'shape',
   TEXT: 'text',
   VIDEO: 'video',
+  CONNECTOR: 'connector',
 };
 
 export const DEFAULT_LAYER_ID = 'layer-default';
@@ -453,19 +454,51 @@ export function loadTemplate(ydoc, origin, canvasState) {
       layerCount++;
     });
 
+    // Template shape id -> the element id it became, so connectors can be resolved.
+    const idMap = new Map();
+
     (canvasState.shapes || []).forEach((shape) => {
       const { id: templateId, ...rest } = shape;
-      elements.set(newId('tpl'), {
+      const elementId = newId('tpl');
+      idMap.set(templateId, elementId);
+      elements.set(elementId, {
         kind: KIND.SHAPE,
         smart: true,
         fromTemplate: true,
         templateShapeId: templateId,
-        color: shape.color || '#111111',
+        color: shape.color || '#f0ece4',
         lineWidth: shape.lineWidth || 2,
         layerId: shape.layerId || canvasState.layers?.[0]?.id || DEFAULT_LAYER_ID,
         seq: nextSeq(),
         timestamp: Date.now(),
         ...rest,
+      });
+      elementCount++;
+    });
+
+    /**
+     * Connectors between template shapes.
+     *
+     * These were dropped entirely before: `createCanvasFromTemplate` returns an
+     * `initialConnectors` array and nothing consumed it, so every flowchart template loaded
+     * as a set of unconnected boxes — the boxes are the least interesting half of a
+     * flowchart. Stored by ELEMENT id, not template id, so a connector survives independently
+     * of the template it came from.
+     */
+    (canvasState.connectors || []).forEach((conn) => {
+      const fromId = idMap.get(conn.from);
+      const toId = idMap.get(conn.to);
+      if (!fromId || !toId) return;
+      elements.set(newId('conn'), {
+        kind: KIND.CONNECTOR,
+        fromId,
+        toId,
+        label: conn.label || null,
+        color: '#55504a',
+        width: 1,
+        seq: nextSeq(),
+        timestamp: Date.now(),
+        layerId: canvasState.layers?.[1]?.id || canvasState.layers?.[0]?.id || DEFAULT_LAYER_ID,
       });
       elementCount++;
     });
@@ -477,7 +510,7 @@ export function loadTemplate(ydoc, origin, canvasState) {
       el.set('kind', KIND.TEXT);
       el.set('x', t.x);
       el.set('y', t.y);
-      el.set('color', t.color || '#111111');
+      el.set('color', t.color || '#f0ece4');
       el.set('seq', nextSeq());
       el.set('layerId', t.layerId || DEFAULT_LAYER_ID);
       el.set('body', body);

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import './TextInputDialog.css';
 
 /**
  * TextInputDialog — modal dialog for entering text to place on the canvas.

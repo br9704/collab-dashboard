@@ -1,93 +1,90 @@
-import { useEffect, useState } from 'react';
-import './LatencyMeter.css';
+import { useEffect, useRef, useState } from 'react';
 
 /**
- * LatencyMeter — displays live round-trip latency to the server.
- * Sends periodic ping events and measures the response time.
+ * LatencyMeter — live round-trip latency, as an instrument readout.
  *
- * @param {Object} props
+ * MOTION.md: "counts between values rather than jumping, and only updates twice per second
+ * max." A number that flickers on every packet is noise, not information — and at ~0.3ms on
+ * loopback the raw value changes on literally every sample. So the displayed figure eases
+ * toward the measured one and is committed to React at most twice a second.
+ *
+ * It also fixes a listener leak: `socket.on('latency-pong', …)` was registered inside an
+ * effect that never removed it, so every re-run added another handler.
+ *
  * @param {Object} props.socket - Socket.io client instance
  */
+
+const PING_MS = 2000;
+const UPDATE_MS = 500;   // twice per second, per MOTION.md
+const EASE = 0.35;
+
 export default function LatencyMeter({ socket }) {
-  const [latency, setLatency] = useState(null);
-  const [avgLatency, setAvgLatency] = useState(null);
-  const [latencies, setLatencies] = useState([]);
+  const [shown, setShown] = useState(null);
+  const [avg, setAvg] = useState(null);
   const [connected, setConnected] = useState(false);
+
+  const measuredRef = useRef(null);
+  const displayedRef = useRef(null);
+  const samplesRef = useRef([]);
 
   useEffect(() => {
     if (!socket) return;
 
-    const handleConnect = () => setConnected(true);
-    const handleDisconnect = () => setConnected(false);
+    const onConnect = () => setConnected(true);
+    const onDisconnect = () => setConnected(false);
+    const onPong = (data) => {
+      const rtt = Date.now() - data.clientTime;
+      measuredRef.current = rtt;
 
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-    setConnected(socket.connected);
-
-    const measureLatency = () => {
-      const clientTime = Date.now();
-      socket.emit('latency-ping', { clientTime });
+      const s = samplesRef.current;
+      s.push(rtt);
+      if (s.length > 20) s.shift();
     };
 
-    socket.on('latency-pong', (data) => {
-      const latency = Date.now() - data.clientTime;
-      setLatency(latency);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('latency-pong', onPong);
+    setConnected(socket.connected);
 
-      // Keep last 20 measurements for average
-      setLatencies(prev => {
-        const updated = [...prev, latency];
-        if (updated.length > 20) {
-          updated.shift();
-        }
-        const avg = Math.round(updated.reduce((a, b) => a + b, 0) / updated.length);
-        setAvgLatency(avg);
-        return updated;
-      });
-    });
+    const ping = () => socket.emit('latency-ping', { clientTime: Date.now() });
+    ping();
+    const pingTimer = setInterval(ping, PING_MS);
 
-    // Measure every 500ms
-    const interval = setInterval(measureLatency, 500);
+    // Count toward the measured value instead of snapping to it.
+    const tickTimer = setInterval(() => {
+      const target = measuredRef.current;
+      if (target === null) return;
+      const current = displayedRef.current;
+      displayedRef.current = current === null ? target : current + (target - current) * EASE;
+
+      setShown(Math.round(displayedRef.current * 10) / 10);
+      const s = samplesRef.current;
+      if (s.length) setAvg(Math.round(s.reduce((a, b) => a + b, 0) / s.length));
+    }, UPDATE_MS);
 
     return () => {
-      clearInterval(interval);
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
-      socket.off('latency-pong');
+      // Named handlers, removed individually — a bare socket.off(event) would unhook
+      // every other component listening to the same event.
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('latency-pong', onPong);
+      clearInterval(pingTimer);
+      clearInterval(tickTimer);
     };
   }, [socket]);
 
-  // Determine connection quality based on average latency
-  const getConnectionQuality = () => {
-    if (!connected) return 'disconnected';
-    if (!avgLatency) return 'unknown';
-    if (avgLatency < 50) return 'good';
-    if (avgLatency < 150) return 'ok';
-    return 'poor';
-  };
-
-  const quality = getConnectionQuality();
-
-  const getConnectionLabel = () => {
-    if (!connected) return 'Disconnected';
-    if (quality === 'unknown') return 'Connecting...';
-    return 'Connected';
-  };
-
   return (
-    <div className="latency-meter">
-      <div className="connection-status">
-        <div className={`connection-dot ${quality}`} title={getConnectionLabel()} />
-        <span className="connection-label">{getConnectionLabel()}</span>
-      </div>
-      <div className="latency-value">
-        {latency ? `${latency}ms` : '—'}
-      </div>
-      {avgLatency && (
-        <div className="latency-avg">
-          Avg: {avgLatency}ms
-        </div>
-      )}
+    <div className="latency-meter" role="status" aria-live="off">
+      <span className="connection-status">
+        <span className={`connection-dot ${connected ? '' : 'disconnected'}`} />
+        <span className="connection-label">
+          {connected ? 'LIVE' : 'RECONNECTING'}
+        </span>
+      </span>
+      <span className="latency-value" aria-label={`Round-trip latency ${shown ?? 0} milliseconds`}>
+        {shown === null ? '—' : `${shown}ms`}
+      </span>
+      <span className="latency-avg">{avg === null ? '' : `avg ${avg}ms`}</span>
     </div>
   );
 }
-

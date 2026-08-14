@@ -41,7 +41,7 @@ export const SHAPE_CONFIG = {
   [SHAPE_TYPES.RECTANGLE]: {
     name: 'Rectangle',
     category: 'flowchart',
-    icon: '⬜',
+    icon: '▢',
     connectorPoints: 4, // North, South, East, West
     draw: drawRectangle,
     defaultWidth: 100,
@@ -50,7 +50,7 @@ export const SHAPE_CONFIG = {
   [SHAPE_TYPES.CIRCLE]: {
     name: 'Circle',
     category: 'basic',
-    icon: '⚫',
+    icon: '○',
     connectorPoints: 8,
     draw: drawCircle,
     defaultWidth: 80,
@@ -59,7 +59,7 @@ export const SHAPE_CONFIG = {
   [SHAPE_TYPES.OVAL]: {
     name: 'Oval',
     category: 'flowchart',
-    icon: '⭕',
+    icon: '○',
     connectorPoints: 4,
     draw: drawOval,
     defaultWidth: 100,
@@ -68,7 +68,7 @@ export const SHAPE_CONFIG = {
   [SHAPE_TYPES.DIAMOND]: {
     name: 'Diamond',
     category: 'flowchart',
-    icon: '💠',
+    icon: '◇',
     connectorPoints: 4,
     draw: drawDiamond,
     defaultWidth: 120,
@@ -77,7 +77,7 @@ export const SHAPE_CONFIG = {
   [SHAPE_TYPES.TRIANGLE]: {
     name: 'Triangle',
     category: 'basic',
-    icon: '🔺',
+    icon: '△',
     connectorPoints: 3,
     draw: drawTriangle,
     defaultWidth: 100,
@@ -86,7 +86,7 @@ export const SHAPE_CONFIG = {
   [SHAPE_TYPES.DATABASE]: {
     name: 'Database',
     category: 'flowchart',
-    icon: '🗄️',
+    icon: '[db]',
     connectorPoints: 4,
     draw: drawDatabase,
     defaultWidth: 100,
@@ -95,7 +95,7 @@ export const SHAPE_CONFIG = {
   [SHAPE_TYPES.DOCUMENT]: {
     name: 'Document',
     category: 'flowchart',
-    icon: '📄',
+    icon: '[d]',
     connectorPoints: 4,
     draw: drawDocument,
     defaultWidth: 100,

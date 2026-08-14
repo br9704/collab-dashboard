@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { getClientId } from '../collab/identity';
-import './SessionManager.css';
 
 /**
  * SessionManager — landing screen for creating or joining a collaborative session.

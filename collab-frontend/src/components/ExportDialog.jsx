@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import './ExportDialog.css';
 
 /**
  * ExportDialog — modal dialog for exporting the canvas as PNG, SVG, or JSON.

@@ -1,5 +1,4 @@
 import { Component } from 'react';
-import './ErrorBoundary.css';
 
 /**
  * ErrorBoundary — catches React rendering errors and displays a fallback UI
