@@ -1,6 +1,6 @@
-/* AICompletion.css - AI shape completion suggestion styling */
+/* ShapeRecognition.css - shape-recognition suggestion styling */
 
-.ai-completion-suggestion {
+.shape-recognition-suggestion {
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -120,7 +120,7 @@
 
 /* Responsive */
 @media (max-width: 600px) {
-  .ai-completion-suggestion {
+  .shape-recognition-suggestion {
     right: 10px;
     left: 10px;
     bottom: 10px;

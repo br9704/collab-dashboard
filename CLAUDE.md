@@ -1,209 +1,116 @@
-# CLAUDE.md — AI Project Context
+# CLAUDE.md — COLLAB DASHBOARD
+# Real-time collaborative whiteboard.
 
-> Use this file to onboard AI coding assistants (Claude Code, Codex, etc.) to the Collab Dashboard project.
-
----
-
-## What This Is
-
-A real-time collaborative whiteboard. Users create/join sessions, draw together on a shared canvas, and see each other's cursors live. Think Figma/Miro but built from scratch with React + Socket.io.
-
-**Version:** v4.0 with v5 quality improvements applied.
+Read this at the start of every session. `masterplan.md` (created in Phase 3 of `ENGINEERPROMPT.md`) is the source of truth for sequencing. `RESEARCH-CONTEXT.md` is the measured audit — read it before trusting the README or the boot banner, both of which currently claim things the code does not do.
 
 ---
 
-## Monorepo Layout
+## Owner
 
-```
-collab-dashboard/
-├── collab-frontend/   ← React app (Vite 7, React 19)
-├── collab-backend/    ← Node.js server (Express 5, Socket.io 4)
-├── README.md
-├── MASTER_PLAN.md
-└── CLAUDE.md          ← You are here
-```
+| | |
+|---|---|
+| Name | Bruno Jaamaa · jaamaabruno@gmail.com · GitHub `br9704` |
+| Repo | github.com/br9704/collab-dashboard |
+| Live URL | **None**, and it cannot currently be deployed anywhere. |
 
----
+## ⛔ Read before writing any code
 
-## Frontend (`collab-frontend/`)
+**The core journey is broken.** Verified by running backend + frontend and driving the app in a real browser:
 
-### Entry Points
-- `index.html` → `src/main.jsx` → `src/App.jsx`
+- Click **New Session** → you are assigned role `VIEWER` on the board you just created. It renders "👁️ View Only Mode". **You cannot draw on your own whiteboard.**
+- **`ONLINE (0)`** — the connected user is not counted in presence, despite the socket reporting `CONNECTED` at a 2 ms ping.
+- Panels overlap: "Exit Session" over the toolbar, the latency widget over the ONLINE panel. The toolbar is an unstyled vertical emoji stack.
+- One `404` console error on load.
 
-### Key Patterns
-- **No router** — single-page app with conditional rendering (session manager vs canvas)
-- **State flow:** `useSocket` hook manages Socket.io connection → `useSessionState` syncs all session data from server events → passed as props to components
-- **Drawing:** HTML5 Canvas API via `useRef` on `<canvas>`. All drawing in `Canvas.jsx` (~800 lines)
-- **Panels:** Sidebar panels (Layers, Comments, Activity, Roles, Permissions, Smart Shapes) toggled by boolean state in `App.jsx`
-- **Modals:** TemplateManager and VideoEmbed rendered outside `main-container` to avoid overflow clipping
-- **CSS:** Co-located `.css` files per component. Global tokens in `index.css` and `App.css`
+**Fix role assignment and presence registration first.** Prove two browser windows can draw together on localhost before any deploy work. There is no point hosting a whiteboard nobody can draw on.
 
-### Component Map
-| Component | Purpose | Key Props |
-|-----------|---------|-----------|
-| `App.jsx` | Root orchestrator — session flow, panel toggles, event wiring | — |
-| `Canvas.jsx` | Core drawing surface — pencil, shapes, text, smart shapes, AI completion, video overlays | `socket`, `sessionState`, `userRole`, `selectedSmartShape` |
-| `SessionManager.jsx` | Create/join session UI | `socket`, `onSessionJoin` |
-| `UserList.jsx` | Shows online users with role badges | `users`, `sessionMembers` |
-| `CursorPresence.jsx` | Renders remote users' cursors | `socket`, `cursors`, `users` |
-| `PresenceHalo.jsx` | Glow effect showing who's drawing where | `userPresence`, `users` |
-| `LayersPanel.jsx` | Create/reorder/toggle/delete layers | `layers`, `onLayerCreate`, etc. |
-| `CommentsPanel.jsx` | Thread comments on a selected stroke | `socket`, `strokeId`, `comments` |
-| `ActivityLog.jsx` | Timestamped session activity feed | `activityLog`, `users` |
-| `RolesPanel.jsx` | Admin role assignment dropdowns | `socket`, `users`, `sessionMembers` |
-| `AdvancedPermissions.jsx` | Granular per-user permission editor | `users`, `permissionManager` |
-| `TemplateManager.jsx` | Browse + load templates (modal) | `isOpen`, `onLoadTemplate` |
-| `SmartShapes.jsx` | Smart shape palette sidebar | `onShapeSelected`, `selectedShape` |
-| `AICompletion.jsx` | AI shape completion suggestion overlay | (internal to Canvas) |
-| `VideoEmbed.jsx` | YouTube/Vimeo/file embed dialog | `isOpen`, `onVideoEmbed` |
-| `VideoEmbedCanvas.jsx` | Draggable video overlays on canvas | (internal to Canvas) |
-| `TextInputDialog.jsx` | Modal text input (replaced `prompt()`) | `x`, `y`, `onSubmit`, `onCancel` |
-| `TextFormattingToolbar.jsx` | Bold/italic/underline/size toolbar | `isVisible`, formatting callbacks |
-| `ExportDialog.jsx` | PNG/SVG/JSON export | `isOpen`, canvas ref |
-| `Toast.jsx` | Toast notification system | via `useToast()` hook |
-| `ErrorBoundary.jsx` | React error boundary with fallback UI | wraps `main-container` |
-| `LatencyMeter.jsx` | Live ping display | `socket` |
-| `UndoRedoControls.jsx` | Undo/redo buttons | `socket`, `historyIndex` |
+## What this is
 
-### Hooks
-| Hook | Purpose |
-|------|---------|
-| `useSocket(url)` | Creates Socket.io connection, handles reconnect, returns `{ socket, connected, error }` |
-| `useSessionState(socket, sessionId)` | Listens to all server events, returns full session state object |
+Two unlinked subprojects with no root workspace config:
+- `collab-backend/` — Express 5 + Socket.io, CommonJS, 1,056 LOC. ~18 socket handlers (session create/join, cursor-move, camera-change, stroke/shape draw, text CRUD, undo/redo, comments, role-change, latency-ping).
+- `collab-frontend/` — React 19 + Vite 7 + Canvas API, 6,330 LOC across 22 files.
 
-### Utilities
-| File | Purpose |
-|------|---------|
-| `permissions.js` | `SessionPermissionManager`, `UserPermissions`, `BASE_ROLES`, `PERMISSIONS` constants |
-| `shapeUtils.js` | Shape type definitions (`SHAPE_TYPES`), shape config (`SHAPE_CONFIG`), connector logic |
-| `shapeRecognition.js` | Stroke → shape recognition (circle, rectangle, triangle, diamond, arrow, line) |
-| `data/templates.js` | 5 pre-made template definitions + helper functions |
+The socket layer underneath is genuine work. None of it is reachable by a user.
 
-### Design System
-- **Palette:** White (`#fff`) + neutral greys (`#f8f9fa`, `#e5e7eb`, `#6b7280`, `#1a1a1a`)
-- **No brand colors.** No blue, purple, or green in the UI.
-- **Borders:** 1px solid `#e5e7eb`, radius 4px
-- **Touch targets:** ≥ 44px
-- **Font:** system font stack, 16px base
+## Locked decisions (do not relitigate)
 
-### Build
-```bash
-npm run dev    # Vite dev server on :5173
-npm run build  # Production build → dist/
-```
+- **Working on localhost comes before deployability, which comes before features.** The order is: role/presence bug → honesty pass → env-parameterisation → deploy → persistence.
+- **Claim only what the code does.** Three current violations: the boot banner and docs headline *"Persistence"* while all state is `const sessions = new Map()` at `server.js:30`, lost on every restart. *"AI shape completion"* is 447 LOC of geometric heuristics — **rename it to shape recognition; it is more impressive honest than as fake AI.** The portfolio's *"50–80ms sync"* is unverified (though measurable via the existing `latency-ping` handler).
+- **Nothing may stay hardcoded to localhost.** `collab-frontend/src/App.jsx:44` and `src/hooks/useSocket.js:11` both hardcode `http://localhost:3001`; `server.js:15` hardcodes the CORS origin array. These become `VITE_SOCKET_URL` and `CORS_ORIGIN`. A `GET /health` route is required — there are currently **zero HTTP routes**.
+- **Deploy topology:** static frontend on Vercel + a long-lived WebSocket backend on Railway/Fly. **Serverless cannot host WebSockets** — this needs a real always-on process, which costs money (`ask_human`).
+- **Docs are not process artifacts.** 40 markdown files including 11 `TEST_REPORT_*.md` and 4 `VERIFICATION_REPORT_*.md`, against **zero tests**. Keep README + DEPLOYMENT + API; delete the rest.
+- **TypeScript 5.9 is a devDependency with zero `.ts`/`.tsx` files.** Either adopt TS properly or remove the dead `tsconfig.json`. Do not leave it ambiguous.
+- **No LICENSE** despite the MIT badge; backend `package.json` says `ISC`, `main` points at a nonexistent `index.js`, and `description`/`author`/`keywords` are empty. Fix all of it.
+
+## The one interesting architectural fork
+
+Persistence. This decision defines whether the repo becomes interview-worthy or stays a prototype:
+
+| Option | Effort | Signal |
+|---|---|---|
+| Redis | Low | Pragmatic. Solves restart-loss and multi-process. Demonstrates nothing novel. |
+| SQLite/Postgres | Medium | Durable, queryable history, session replay. Heavier write path for cursor/stroke events — needs batching or a hot/cold split. |
+| **Yjs / Automerge (CRDT)** | High | What production whiteboards actually use. Solves persistence, conflict resolution and offline in one move. Largest scope. |
+
+Common middle path: CRDT for the document (strokes/shapes/text), plain socket events for ephemeral presence (cursors, camera). `record_decision` whichever is chosen, with the why.
+
+## The open strategic question
+
+Of Bruno's three GitHub repos this needs the most engineering to become a net positive. **Archiving it is a defensible choice** and `ENGINEERPROMPT.md` asks him directly. Do not begin Sprint 1 until that is answered.
 
 ---
 
-## Backend (`collab-backend/`)
+## Aethereum sync — required workflow (canonical block, identical across every project)
 
-### Files
-- `server.js` — Everything: Express setup, Socket.io config, Session class, all event handlers, shape recognition helpers
-- `roles.js` — Role constants (`CREATOR`, `EDITOR`, `VIEWER`) + permission matrix + helper functions
+This project coordinates through Aethereum. Account config lives at `~/.aethereum/config.json` and this machine is already logged in.
 
-### Session Model (in-memory)
-```javascript
-class Session {
-  id, name, creator, createdAt
-  users: Set              // connected socket IDs
-  sessionMembers: {}      // { socketId: { role: 'creator'|'editor'|'viewer' } }
-  cursors: {}             // { socketId: { x, y, timestamp } }
-  strokes: []             // freehand stroke objects
-  shapes: []              // geometric shape objects
-  textBoxes: []           // text annotation objects
-  comments: []            // { id, strokeId, text, author, resolved }
-  history: []             // undo/redo stack
-  historyIndex: number
-  camera: { x, y, zoom }
-  userPresence: {}        // { socketId: { cursor, isDrawing, lastActivity, activeArea } }
-  activityLog: []         // { action, userId, timestamp, details }
-}
-```
+- **First session:** run `aethereum init` in the repo root and create/join this project's room.
+- **`share_intent`** — one line at the start of every sprint, before any code. Marking a task complete without having shared intent for its sprint is a workflow violation.
+- **`declare_contract`** — for every interface other code consumes. Here: the socket event schema and the role/permission model.
+- **`record_decision`** — at every architectural fork or irreversible choice, with the *why*. Here especially: the persistence fork and the keep-or-archive call.
+- **`ask_human`** — whenever the decision is Bruno's: spending money (this one needs an always-on backend), publishing, deleting, rewriting git history, naming, or anything with an external side effect. Do not guess and do not block.
+- **`record_verification`** — at every sprint gate, pass/fail with evidence. For this repo, evidence means two browser windows drawing together.
 
-### Permission Model
-Every socket handler checks permissions via `canPerformAction(userRole, action)` before mutating state. The permission matrix in `roles.js` maps actions to allowed roles:
-- `draw-stroke`, `draw-shape`, `add-text`, `edit-text`, `delete-text` → Creator + Editor
-- `change-user-role`, `remove-user`, `delete-session`, `export-session` → Creator only
-- `add-comment` → All roles
-- `resolve-comment`, `undo`, `redo` → Creator + Editor
+## Masterplan discipline (canonical block)
 
-### Socket Events (server-side)
-| Event | Permission | Behavior |
-|-------|-----------|----------|
-| `session-create` | Any | Creates session, assigns CREATOR role |
-| `session-join` | Any | Joins session with VIEWER role |
-| `stroke-draw` | Creator/Editor | Stores stroke, broadcasts `stroke-created` |
-| `shape-draw` | Creator/Editor | Shape recognition → stores → broadcasts `shape-created` |
-| `text-add` | Creator/Editor | Stores text box, broadcasts `text-created` |
-| `text-update` | Creator/Editor | Last-write-wins, owner only, broadcasts `text-updated` |
-| `text-delete` | Creator/Editor | Owner only, broadcasts `text-deleted` |
-| `undo` / `redo` | Creator/Editor | Navigates history, broadcasts `undo-applied`/`redo-applied` |
-| `role-change` | Creator only | Updates role, broadcasts `role-updated` |
-| `comment-add` | All | Stores comment, broadcasts `comment-created` |
-| `comment-resolve` | Any | Marks resolved, broadcasts `comment-resolved` |
-| `cursor-move` | Any | Updates cursor + presence, broadcasts `cursor-update` |
-| `camera-change` | Any | Updates session camera, broadcasts `camera-updated` |
-| `disconnect` | — | Removes user, cleans up empty sessions |
+The masterplan is the **single source of truth for sequencing**. This file is the source of truth for *rules*. Precedence on conflict: masterplan (sequencing) > CLAUDE.md (rules) > ENGINEERPROMPT.md (kickoff).
 
-### Running
-```bash
-npm start      # node server.js on :3001
-npm run dev    # same
-```
+- Status keys, used live in the file as work happens: `[ ]` not started · `[~]` in progress · `[x]` complete · `[⏭]` deferred (always with a one-line reason).
+- **Never delete or rewrite masterplan content.** Expand it in place — add sub-tasks, file paths, edge cases, findings. Deepen, don't replace.
+- Mark tasks as you go, never batched at the end of a session.
+- A sprint closes only when its acceptance criteria pass. Then: fill the **As-shipped delta** and **Deferred** notes, move the Current-sprint pointer, and update the Current-state line at the bottom of this file.
+- Never skip a sprint. Never partially complete one and move on.
+- Stop and report at every sprint close before starting the next.
 
-### Environment
-```
-PORT=3001
-CORS_ORIGIN=http://localhost:5173
-```
+## Honesty rules (canonical block)
+
+- Never state a number in a README, the site, or any public copy that a committed artifact cannot back.
+- Verified counts only — never restate a figure from memory.
+- If a claim and the code disagree, that is a bug in one of them. Fix it or flag it; never leave it ambiguous.
+- `[PLACEHOLDER — description]` for anything unknown. Never invent content.
 
 ---
 
-## Common Tasks
+## Current state
 
-### Add a new drawing tool
-1. Add tool button in `Canvas.jsx` toolbar section
-2. Handle mouse events for the new tool in the `handleMouseDown/Move/Up` functions
-3. Emit appropriate socket event (`stroke-draw` or `shape-draw`)
-4. Add rendering logic in the canvas redraw function
+> Update at every sprint close.
 
-### Add a new panel
-1. Create `NewPanel.jsx` + `NewPanel.css` in `components/`
-2. Add toggle state in `App.jsx`
-3. Add toggle button in sidebar
-4. If it needs socket events, add handlers in `server.js`
+**Current state (after Sprint 0, 2026-08-14):** `masterplan.md` written; Sprint 0 closed.
+Docs 40 → 10, MIT LICENSE added, both `package.json`s corrected, root npm-workspace added,
+unused TypeScript dep removed, the lying "Persistence" boot banner and the no-op auto-save
+interval deleted, "AI shape completion" renamed to shape recognition throughout, README
+rewritten with a measured known-issues table.
 
-### Add a new permission
-1. Add to `PERMISSIONS` object in backend `roles.js`
-2. Add to `PERMISSIONS` constant in frontend `utils/permissions.js`
-3. Add to `ROLE_PERMISSIONS` mapping
-4. Add `canPerformAction()` check in the relevant socket handler
+Still broken, next up in Sprint 1: the core journey. Root cause **proved** — the creator's
+VIEWER role and `ONLINE (0)` are one race (`user-joined` is broadcast before the client
+subscribes; the ack already carries the right state and is discarded). A **third blocker the
+audit missed**: `cursor-move` is never emitted by the app, so live cursors never transmit.
+Also unfixed: undo mutates nothing, 13 client events have no server handler, state is
+in-memory only, undeployable (hardcoded localhost, no `/health`), zero tests, UI unstyled
+against SIGNAL, commits authored by "Subagent".
 
-### Add a new template
-1. Add template definition in `src/data/templates.js`
-2. Follow the existing structure: `{ id, name, description, category, initialShapes, initialStrokes, initialLayers }`
+Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 
----
+## MOTION.md (binding)
 
-## Gotchas
-
-- **No database** — all session data is in-memory. Server restart = data loss.
-- **No auth** — users are identified by socket ID only.
-- **Canvas.jsx is large** (~800 lines) — it handles all drawing tools, rendering, and interactions. Consider splitting if adding more tools.
-- **Backend is one file** — `server.js` has the Session class + all handlers. Consider modularizing for scale.
-- **Text ownership** — only the creator of a text box can edit/delete it (checked server-side).
-- **Auto-save intervals** — created per session in `session-create`, cleaned up on delete. Logs only (no actual persistence).
-- **Shape recognition** — basic heuristic (collinearity, bounding box corner proximity, radius variance). Not ML-based.
-
----
-
-## Commit Convention
-
-```
-feat: new feature
-fix: bug fix
-docs: documentation
-style: CSS/formatting (no logic change)
-perf: performance improvement
-a11y: accessibility
-chore: tooling, cleanup
-```
+`MOTION.md` in this folder is the animation specification — sequences, timings, per-surface rules, acceptance gates. It has the same authority as this file. When you author `masterplan.md` in Phase 3, fold its acceptance checklist into the relevant sprint gates and reference it from the plan.

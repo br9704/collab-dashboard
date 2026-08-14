@@ -9,7 +9,7 @@
  * - Comments (Sprint 17)
  * - Activity log (Sprint 18)
  * - v3: Text formatting, advanced layers, export
- * - v4: Templates, smart shapes, video embeds, AI completion, permissions
+ * - v4: Templates, smart shapes, video embeds, shape recognition, permissions
  */
 
 import { useEffect, useState } from 'react';
@@ -96,7 +96,7 @@ export function useSessionState(socket, sessionId) {
     socket.off('video-embed-removed');
     socket.off('permissions-snapshot');
     socket.off('smart-shape-placed');
-    socket.off('ai-shape-accepted');
+    socket.off('shape-recognition-accepted');
 
     // ── Join / sync ──────────────────────────────────────────────────────
     socket.on('user-joined', (data) => {
@@ -289,8 +289,8 @@ export function useSessionState(socket, sessionId) {
       setShapes(prev => [...prev, shape]);
     });
 
-    // ── v4 Feature 3: AI shape completion ────────────────────────────────
-    socket.on('ai-shape-accepted', (shape) => {
+    // ── v4 Feature 3: Shape recognition ────────────────────────────────
+    socket.on('shape-recognition-accepted', (shape) => {
       setShapes(prev => [...prev, shape]);
     });
 
@@ -322,7 +322,7 @@ export function useSessionState(socket, sessionId) {
       socket.off('video-embed-removed');
       socket.off('permissions-snapshot');
       socket.off('smart-shape-placed');
-      socket.off('ai-shape-accepted');
+      socket.off('shape-recognition-accepted');
     };
   }, [socket, sessionId]);
 
@@ -371,7 +371,7 @@ export function useSessionState(socket, sessionId) {
     moveVideoEmbed: (id, x, y) => socket?.emit('video-embed-move', { id, x, y }),
     removeVideoEmbed: (id) => socket?.emit('video-embed-remove', id),
     placeSmartShape: (shapeData) => socket?.emit('smart-shape-place', shapeData),
-    acceptAIShape: (shapeData) => socket?.emit('ai-shape-accept', shapeData),
+    acceptRecognizedShape: (shapeData) => socket?.emit('shape-recognition-accept', shapeData),
     broadcastPermission: (change) => socket?.emit('permission-change', change),
 
     // v4 local-only setters (for optimistic updates without server)

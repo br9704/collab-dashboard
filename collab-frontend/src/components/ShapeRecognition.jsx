@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { recognizeShape, simplifyStroke } from '../utils/shapeRecognition';
-import './AICompletion.css';
+import './ShapeRecognition.css';
 
 /**
- * AICompletion - Intelligent shape completion suggestions
- * Analyzes rough sketches and suggests clean shape conversions
+ * ShapeRecognition - suggests snapping a rough stroke to a clean shape
+ * Pure geometric analysis of the stroke points. No model, no inference.
  * 
  * @component
  * @param {Object} props - Component props
@@ -13,7 +13,7 @@ import './AICompletion.css';
  * @param {boolean} props.isDrawing - Whether user is actively drawing
  * @returns {React.ReactElement}
  */
-export default function AICompletion({ currentStroke, onAcceptSuggestion, isDrawing }) {
+export default function ShapeRecognition({ currentStroke, onAcceptSuggestion, isDrawing }) {
   const [suggestion, setSuggestion] = useState(null);
   const [confidence, setConfidence] = useState(0);
   const [showSuggestion, setShowSuggestion] = useState(false);
@@ -79,7 +79,7 @@ export default function AICompletion({ currentStroke, onAcceptSuggestion, isDraw
   };
 
   return (
-    <div className="ai-completion-suggestion">
+    <div className="shape-recognition-suggestion">
       <div className="suggestion-content">
         <div className="suggestion-icon">
           {shapeEmoji[suggestion.shape] || '✨'}

@@ -1,5 +1,5 @@
 /**
- * Shape recognition and AI completion engine
+ * Shape recognition engine — geometric heuristics, no machine learning
  * Analyzes rough sketches and auto-completes them into clean shapes
  */
 

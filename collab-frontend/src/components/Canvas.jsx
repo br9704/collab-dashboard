@@ -6,7 +6,7 @@
  * - Geometric shapes (line, rectangle, circle)
  * - Text boxes
  * - Smart shape placement (v4 Feature 2)
- * - AI shape completion suggestion (v4 Feature 3)
+ * - Shape-recognition suggestion (v4 Feature 3)
  * - Embedded video overlays (v4 Feature 4)
  *
  * Camera transform (pan/zoom) is applied to all canvas content.
@@ -16,7 +16,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import TextInputDialog from './TextInputDialog';
 import TextFormattingToolbar from './TextFormattingToolbar';
 import ExportDialog from './ExportDialog';
-import AICompletion from './AICompletion';
+import ShapeRecognition from './ShapeRecognition';
 import VideoEmbedCanvas from './VideoEmbedCanvas';
 import { SHAPE_CONFIG, SHAPE_TYPES } from '../utils/shapeUtils';
 import './Canvas.css';
@@ -62,10 +62,10 @@ export default function Canvas({
   // v3 Feature 3: Export dialog
   const [showExportDialog, setShowExportDialog] = useState(false);
 
-  // ─── v4 Feature 3: AI Shape Completion ─────────────────────────────────
+  // ─── v4 Feature 3: Shape recognition ─────────────────────────────────
   /**
    * Holds the stroke points of the most recently completed freehand draw.
-   * Passed to AICompletion for shape recognition.  Cleared after
+   * Passed to ShapeRecognition for shape recognition.  Cleared after
    * the user accepts / dismisses the suggestion or starts a new stroke.
    */
   const [lastCompletedStroke, setLastCompletedStroke] = useState(null);
@@ -358,7 +358,7 @@ export default function Canvas({
 
     setIsDrawing(true);
     isDrawingRef.current = true;
-    setLastCompletedStroke(null); // Clear previous AI suggestion on new stroke
+    setLastCompletedStroke(null); // Clear previous recognition suggestion on new stroke
 
     const rect = canvasRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left - camera.x) / camera.zoom;
@@ -445,7 +445,7 @@ export default function Canvas({
 
       socket?.emit('stroke-draw', { points: completedStroke, color, width: lineWidth });
 
-      // ── v4 Feature 3: Pass completed stroke to AI completion ────────
+      // ── v4 Feature 3: Pass completed stroke to shape recognition ────────
       setLastCompletedStroke(completedStroke);
       currentStrokeRef.current = null;
 
@@ -532,14 +532,14 @@ export default function Canvas({
     onSmartShapeCleared?.();
   }, [selectedSmartShape, color, lineWidth, socket, onSmartShapeCleared]);
 
-  // ── v4 Feature 3: AI completion acceptance ───────────────────────────────
+  // ── v4 Feature 3: Shape-recognition acceptance ───────────────────────────────
 
   /**
-   * Accept an AI shape suggestion and emit it as a shape on the canvas.
+   * Accept a recognised-shape suggestion and emit it as a shape on the canvas.
    *
    * @param {Object} suggestion - { shape, bounds, originalPoints }
    */
-  const handleAIAccept = useCallback(({ shape, bounds }) => {
+  const handleRecognitionAccept = useCallback(({ shape, bounds }) => {
     if (!bounds) return;
 
     const shapeData = {
@@ -547,11 +547,11 @@ export default function Canvas({
       bounds,
       color,
       width: lineWidth,
-      aiGenerated: true,
+      recognized: true,
       createdAt: Date.now(),
     };
 
-    socket?.emit('ai-shape-accept', shapeData);
+    socket?.emit('shape-recognition-accept', shapeData);
     setLastCompletedStroke(null);
   }, [color, lineWidth, socket]);
 
@@ -767,10 +767,10 @@ export default function Canvas({
         canEdit={canDraw}
       />
 
-      {/* v4 Feature 3: AI shape completion suggestion */}
-      <AICompletion
+      {/* v4 Feature 3: Shape recognition suggestion */}
+      <ShapeRecognition
         currentStroke={lastCompletedStroke}
-        onAcceptSuggestion={handleAIAccept}
+        onAcceptSuggestion={handleRecognitionAccept}
         isDrawing={isDrawing}
       />
 

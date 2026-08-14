@@ -13,3 +13,7 @@ dist/
 .parcel-cache/
 build/
 coverage/
+.mcp.json
+.cursor/mcp.json
+.vscode/mcp.json
+opencode.json

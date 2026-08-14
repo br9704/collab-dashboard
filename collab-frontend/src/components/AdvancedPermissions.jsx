@@ -116,8 +116,8 @@ export default function AdvancedPermissions({ users, permissionManager, onPermis
       PERMISSIONS.UNDO,
       PERMISSIONS.REDO
     ],
-    'AI & Features': [
-      PERMISSIONS.USE_AI_COMPLETION,
+    'Shape recognition': [
+      PERMISSIONS.USE_SHAPE_RECOGNITION,
       PERMISSIONS.USE_TEMPLATES,
       PERMISSIONS.EMBED_VIDEO
     ]
@@ -264,7 +264,7 @@ function getRoleDescription(role) {
   const descriptions = {
     owner: 'Full access to all features and settings',
     editor: 'Can create and modify content, manage collaboration',
-    commenter: 'Can view and comment, use AI features',
+    commenter: 'Can view, comment, and use shape recognition',
     viewer: 'Read-only access to canvas'
   };
   return descriptions[role] || '';
@@ -301,7 +301,7 @@ function formatPermissionName(permission) {
     'file:share': 'Share files',
     'history:undo': 'Undo changes',
     'history:redo': 'Redo changes',
-    'ai:completion': 'Use AI completion',
+    'shapes:recognition': 'Use shape recognition',
     'templates:use': 'Use templates',
     'media:embed-video': 'Embed videos'
   };

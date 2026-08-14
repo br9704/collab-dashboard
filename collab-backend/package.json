@@ -1,16 +1,22 @@
 {
   "name": "collab-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Socket.io server for Collab Dashboard — sessions, presence, drawing sync, and the role/permission model.",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"No tests yet — see masterplan.md Sprint 5\" && exit 0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "socket.io",
+    "websocket",
+    "collaboration",
+    "whiteboard",
+    "real-time"
+  ],
+  "author": "Bruno Jaamaa <jaamaabruno@gmail.com>",
+  "license": "MIT",
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

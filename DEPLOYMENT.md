@@ -1,5 +1,22 @@
 # Deployment Guide
 
+> **⚠️ This document describes a deployment that is not currently possible.** It is kept as a
+> target, not as instructions. Rewritten in Sprint 6 — see [`masterplan.md`](masterplan.md).
+>
+> Measured against the code as it stands:
+>
+> - **`VITE_SOCKET_URL` does not exist.** The socket URL is hardcoded to `http://localhost:3001`
+>   in `collab-frontend/src/App.jsx` and `src/hooks/useSocket.js`. A deployed frontend would
+>   try to reach the *visitor's own* localhost.
+> - **`GET /health` does not exist.** The server has zero HTTP routes; `curl /health` returns
+>   Express's default 404. Railway/Render/Fly health checks require one.
+> - **CORS is a hardcoded localhost array** in `collab-backend/server.js`. Any deployed
+>   frontend is blocked.
+> - **The Supabase persistence section below was never implemented.** All state is an
+>   in-memory `Map` and is lost on restart. Persistence lands in Sprint 2 via Yjs + Hocuspocus,
+>   not Supabase.
+> - Serverless platforms cannot host WebSockets; the backend needs a long-lived process.
+
 ## Local Development Setup
 
 ### Prerequisites

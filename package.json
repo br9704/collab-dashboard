@@ -1,0 +1,30 @@
+{
+  "name": "collab-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time collaborative whiteboard — React + Canvas frontend, Socket.io backend.",
+  "author": "Bruno Jaamaa <jaamaabruno@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/br9704/collab-dashboard.git"
+  },
+  "workspaces": [
+    "collab-backend",
+    "collab-frontend"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:backend dev:frontend",
+    "dev:backend": "npm run dev --workspace collab-backend",
+    "dev:frontend": "npm run dev --workspace collab-frontend",
+    "build": "npm run build --workspace collab-frontend",
+    "start": "npm run start --workspace collab-backend",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

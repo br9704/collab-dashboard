@@ -1,5 +1,18 @@
 # Socket.io API Reference
 
+> **Accuracy note (2026-08-14).** This reference is *partial and in one place wrong*, and is
+> superseded in Sprint 3 by a formally declared contract — see [`masterplan.md`](masterplan.md).
+> Measured against `collab-backend/server.js`, which has **16** handlers:
+>
+> - **Documented but not implemented:** `tool-change` / `tool-changed`. The client emits it;
+>   no server handler exists. Marked inline below.
+> - **Implemented but undocumented here:** `camera-change`/`camera-updated`, `undo`/`undo-applied`,
+>   `redo`/`redo-applied`, `comment-add`/`comment-created`, `comment-resolve`/`comment-resolved`,
+>   `role-change`/`role-updated`, `disconnect`.
+> - A further **12** client events beyond `tool-change` have no handler at all
+>   (`template-load`, `smart-shape-place`, `shape-recognition-accept`, `video-embed*`,
+>   `layer-*`, `text-formatting-update`, `permission-change`).
+
 ## Client → Server Events
 
 ### `session-create`
@@ -138,8 +151,11 @@ Delete a text annotation.
 
 ---
 
-### `tool-change`
+### `tool-change` — ⚠️ NOT IMPLEMENTED
 Change the active drawing tool/mode.
+
+**Status:** the client emits this event; **there is no server handler**, so nothing is ever
+broadcast and no other user sees the change. Implemented in Sprint 3.
 
 **Payload:**
 ```javascript

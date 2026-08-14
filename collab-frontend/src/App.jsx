@@ -5,7 +5,7 @@
  * - Sprint 1-18 + v3 features (existing)
  * - v4 Feature 1: Template System
  * - v4 Feature 2: Smart Shapes
- * - v4 Feature 3: AI Shape Completion (delegated to Canvas)
+ * - v4 Feature 3: Shape recognition (delegated to Canvas)
  * - v4 Feature 4: Video Embedding
  * - v4 Feature 5: Advanced Permissions
  */

@@ -26,9 +26,10 @@ const PORT = process.env.PORT || 3001;
 // SPRINT 10-11: Session & Persistence Setup
 // ==========================================
 
-// In-memory session storage
+// In-memory session storage. NOT persistent: every session, stroke, comment and role is
+// lost on restart, and this cannot scale past a single process. Replaced by a Yjs document
+// store in Sprint 2 — see masterplan.md.
 const sessions = new Map();
-const sessionAutoSaveIntervals = new Map();
 
 // Enhanced Session class with history, permissions, comments, activity log
 class Session {
@@ -216,12 +217,6 @@ function getSession(sessionId) {
 }
 
 function deleteSession(sessionId) {
-  // Stop auto-save interval
-  if (sessionAutoSaveIntervals.has(sessionId)) {
-    clearInterval(sessionAutoSaveIntervals.get(sessionId));
-    sessionAutoSaveIntervals.delete(sessionId);
-  }
-  
   sessions.delete(sessionId);
   console.log(`[SESSION] Deleted: ${sessionId}`);
 }
@@ -364,18 +359,6 @@ io.on('connection', (socket) => {
       users: Array.from(session.users),
       sessionState: session.toJSON()
     });
-    
-    // Sprint 10-11: Start auto-save interval (every 10 seconds)
-    const autoSaveInterval = setInterval(() => {
-      const sess = getSession(currentSessionId);
-      if (sess) {
-        console.log(`[AUTO-SAVE] Session ${currentSessionId} saved`);
-        // In production with Supabase, would do:
-        // supabase.from('sessions').upsert({ id: sess.id, data: sess.toJSON(), updated_at: now() })
-      }
-    }, 10000);
-    
-    sessionAutoSaveIntervals.set(session.id, autoSaveInterval);
     
     callback({ sessionId: session.id, session: session.toJSON() });
   });
@@ -882,5 +865,5 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
   console.log(`[SERVER] Listening on port ${PORT}`);
-  console.log(`[FEATURES] Sprints 10-18 enabled: Persistence, Undo/Redo, Camera Sync, Presence, Comments, Roles, Activity Log, Shape Recognition`);
+  console.log(`[STATE]  In-memory only — all sessions are lost on restart. See masterplan.md Sprint 2.`);
 });
