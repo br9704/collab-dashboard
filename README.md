@@ -29,7 +29,7 @@ These are measured, not suspected. Each links to the sprint that closes it.
 | ~~Export not wired up~~ | ~~the export dialog did nothing~~ | **fixed, Sprint 4** |
 | ~~All state in memory; sessions deleted when the last user leaves~~ | ~~nothing survived a restart~~ | **fixed, Sprint 2** |
 | Socket URL and CORS origins are hardcoded to `localhost` | Cannot be deployed anywhere yet | Sprint 6 |
-| Zero tests | No regression safety | Sprint 5 |
+| ~~Zero tests~~ | ~~no regression safety~~ | **fixed, Sprint 5 — 95 tests** |
 | ~~UI unstyled; panels overlap~~ | ~~read as unfinished~~ | **fixed, Sprint 4** |
 | Synchronised camera has no UI | Peers publish their camera; nothing consumes it | open |
 
@@ -44,9 +44,11 @@ Verified by running the server and driving it with scripted clients and real bro
   reopen the id — the board is still there. Concurrent edits merge rather than clobber.
 - **Live presence** — cursors, camera and "who is drawing" ride the Yjs Awareness protocol.
   Ephemeral by design: presence is about who is here *now*, and is never written to disk.
-- **Offline read** — `y-indexeddb` caches the document locally, so a board renders before the
-  network answers. (Editing *while* offline and reconciling is wired but not yet verified —
-  see Sprint 5.)
+- **Offline editing that reconciles** — `y-indexeddb` caches the document locally. Pull the
+  network, keep drawing, come back: your work and everyone else's both survive and converge.
+  Verified end to end by taking one browser offline while another keeps editing.
+  (This caches the *document*, not the app shell — there is no service worker, so a reload
+  while offline still needs the network.)
 - **Per-user undo** — a `Y.UndoManager` scoped to your own edits. Ctrl+Z undoes *your* last
   action, not whatever happened most recently on the board.
 - **A role model enforced at the connection, not in the UI** — `collab-backend/roles.js`.
@@ -84,6 +86,27 @@ a network sync figure** — that requires a deployed, cross-network measurement,
 been taken yet. No sync-latency number is claimed here until it has been.
 
 ---
+
+## Tests
+
+```bash
+npm test              # both workspaces
+```
+
+95 unit and integration tests. They are not decoration — writing them found **seven real
+bugs**, including corner detection that flagged every point on a straight edge as a corner
+(so rectangle, triangle and diamond recognition could never fire), a circle test with no
+roundness check that read rectangles as circles, and strokes that were never assigned to a
+layer.
+
+| Suite | What it covers |
+|---|---|
+| `roles.test.mjs` | the permission matrix, as properties: hierarchy, fail-closed on unknown input |
+| `store.test.mjs` | durable membership, against a real SQLite file and a simulated restart |
+| `session.integration.test.mjs` | the real server over a real socket — **pins the original race** |
+| `permissions.test.js` | the client-side permission model |
+| `shapeRecognition.test.js` | the geometry, on clean *and* hand-wobbled shapes |
+| `doc.test.js` | the CRDT modelling rules and convergence under concurrent edits |
 
 ## Tech stack
 

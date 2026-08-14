@@ -72,6 +72,8 @@ export default function Canvas({
   const prevElementsRef = useRef(new Map());
 
   const currentStrokeRef = useRef(null);
+  /** The element id of the stroke shape recognition is currently offering to replace. */
+  const lastStrokeIdRef = useRef(null);
   const shapeStartRef = useRef(null);
   const textInputPositionRef = useRef(null);
 
@@ -326,6 +328,37 @@ export default function Canvas({
               Math.abs(shape.points[1].y - shape.points[0].y)
             );
           }
+        } else if (shape.type === 'triangle' && shape.bounds) {
+          const { x, y, width: w, height: h } = shape.bounds;
+          ctx.beginPath();
+          ctx.moveTo(x + w / 2, y);
+          ctx.lineTo(x + w, y + h);
+          ctx.lineTo(x, y + h);
+          ctx.closePath();
+          ctx.stroke();
+        } else if (shape.type === 'diamond' && shape.bounds) {
+          const { x, y, width: w, height: h } = shape.bounds;
+          ctx.beginPath();
+          ctx.moveTo(x + w / 2, y);
+          ctx.lineTo(x + w, y + h / 2);
+          ctx.lineTo(x + w / 2, y + h);
+          ctx.lineTo(x, y + h / 2);
+          ctx.closePath();
+          ctx.stroke();
+        } else if (shape.type === 'arrow' && shape.bounds) {
+          const { x, y, width: w, height: h } = shape.bounds;
+          ctx.beginPath();
+          ctx.moveTo(x, y + h);
+          ctx.lineTo(x + w, y);
+          ctx.stroke();
+          const a = Math.atan2(-h, w);
+          const head = 10 / camera.zoom;
+          ctx.beginPath();
+          ctx.moveTo(x + w, y);
+          ctx.lineTo(x + w - head * Math.cos(a - 0.4), y - head * Math.sin(a - 0.4));
+          ctx.moveTo(x + w, y);
+          ctx.lineTo(x + w - head * Math.cos(a + 0.4), y - head * Math.sin(a + 0.4));
+          ctx.stroke();
         } else if (shape.type === 'circle') {
           const c = shape.bounds?.center;
           if (c) {
@@ -341,6 +374,14 @@ export default function Canvas({
             ) / 2;
             ctx.beginPath();
             ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+            ctx.stroke();
+          } else if (shape.bounds && shape.bounds.width !== undefined) {
+            // A RECOGNISED circle carries a plain bounding box rather than the
+            // { center, radius } a hand-drawn one gets. Handling only the latter meant an
+            // accepted circle recognition rendered nothing at all.
+            const { x, y, width: w, height: h } = shape.bounds;
+            ctx.beginPath();
+            ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, 2 * Math.PI);
             ctx.stroke();
           }
         }
@@ -563,7 +604,8 @@ export default function Canvas({
       // Commit the canonical stroke FIRST, then drop the streamed preview. Doing it the
       // other way round leaves a one-frame gap where the line vanishes and reappears —
       // MOTION.md's "final reconciliation pass" has to be invisible.
-      doc.addStroke({ points, color, width: lineWidth, layerId: activeLayerId });
+      lastStrokeIdRef.current =
+        doc.addStroke({ points, color, width: lineWidth, layerId: activeLayerId });
       doc?.setLiveStroke?.(null);
       setLastCompletedStroke(points);
       currentStrokeRef.current = null;
@@ -622,11 +664,34 @@ export default function Canvas({
     setTextDialogOpen(false);
   };
 
-  const handleRecognitionAccept = useCallback(({ shape, bounds }) => {
+  /**
+   * Accepting a recognition REPLACES the rough stroke — it does not add a clean shape on
+   * top of it.
+   *
+   * MOTION.md describes the raw stroke cross-fading *into* the recognised shape: it becomes
+   * the shape. Adding without removing left both on the board, perfectly overlapping, so
+   * every recognised drawing silently doubled its element count and an undo removed only
+   * half of what the user saw.
+   */
+  const handleRecognitionAccept = useCallback(({ shape, bounds, originalPoints }) => {
     if (!bounds) return;
-    doc.addShape({ type: shape, points: [], bounds, color, width: lineWidth, recognized: true, layerId: activeLayerId });
+    const replacing = lastStrokeIdRef.current;
+
+    // A recognised LINE needs its endpoints, not just a bounding box: a box says where the
+    // line lives but not which diagonal it runs along. Carrying the original first and last
+    // points keeps the direction the user actually drew.
+    const points = shape === 'line' && originalPoints?.length >= 2
+      ? [originalPoints[0], originalPoints[originalPoints.length - 1]]
+      : [];
+
+    doc.addShape({
+      type: shape, points, bounds, color, width: lineWidth,
+      recognized: true, layerId: activeLayerId,
+    });
+    if (replacing) doc.deleteElement(replacing);
+    lastStrokeIdRef.current = null;
     setLastCompletedStroke(null);
-  }, [doc, color, lineWidth]);
+  }, [doc, color, lineWidth, activeLayerId]);
 
   const getCursorStyle = () => {
     if (isDraggingCanvas) return 'grabbing';

@@ -148,10 +148,24 @@ Two things worth remembering: the canvas 2D bitmap was still painted `#ffffff` l
 CSS was dark — restyling CSS does not touch a canvas fill; and the overlapping-panels bug was
 one cause, every floating readout positioned into the same corner, now given explicit lanes.
 
-Still open: zero tests, and offline *write*-and-reconcile still unproven (Sprint 5);
-undeployable — hardcoded localhost URLs (Sprint 6); no demo GIF or measured deployed latency
-(Sprint 7); commits authored by "Subagent" (Sprint 8, owner-gated). Synchronised camera is
-published over Awareness but nothing consumes it.
+**Sprint 5 closed — 95 tests, and they earned their keep.** Writing them found **seven real
+bugs**: strokes never stored a `layerId` (so layers only appeared to work); corner detection
+was inverted, flagging every point on a straight edge as a corner — 46 on a 48-point
+rectangle — which meant rectangle/triangle/diamond recognition could never fire on a real
+stroke; corner detection was not cyclic, losing a closed shape's starting corner; `tryCircle`
+had no roundness test, so rectangles were recognised as circles; the corner-count gates
+overlapped so a flat constant picked the winner; accepting a recognition added a clean shape
+without removing the rough stroke; and fixing that exposed recognised lines/triangles/
+diamonds/arrows rendering nothing at all.
+
+The offline clause deferred from Sprint 2 is closed: one browser goes offline, keeps drawing,
+another edits concurrently, and both converge with nothing clobbered. Note the honest scope —
+IndexedDB caches the *document*, not the app shell; there is no service worker.
+
+Still open: undeployable — hardcoded localhost URLs (Sprint 6); no demo GIF or measured
+deployed latency (Sprint 7); commits authored by "Subagent", and CI has never actually run on
+GitHub because nothing is pushed (Sprint 8, owner-gated). Synchronised camera is published
+over Awareness but nothing consumes it.
 
 Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 

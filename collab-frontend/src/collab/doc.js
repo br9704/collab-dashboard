@@ -127,7 +127,7 @@ export function readComments(ydoc) {
 // UndoManager knows which changes are yours. Without the tag, Ctrl+Z would undo whatever
 // happened most recently on the board — including other people's work.
 
-export function addStroke(ydoc, origin, { points, color, width, userId }) {
+export function addStroke(ydoc, origin, { points, color, width, userId, layerId }) {
   const id = newId('stroke');
   ydoc.transact(() => {
     getElements(ydoc).set(id, {
@@ -137,6 +137,10 @@ export function addStroke(ydoc, origin, { points, color, width, userId }) {
       points,
       color,
       width,
+      // Every element must record its layer. Omitting this made strokes belong to no
+      // layer at all: hiding a layer left them visible and deleting one left them
+      // orphaned on the board with no control able to reach them.
+      layerId: layerId || DEFAULT_LAYER_ID,
       seq: nextSeq(),
       timestamp: Date.now(),
     });
@@ -144,7 +148,10 @@ export function addStroke(ydoc, origin, { points, color, width, userId }) {
   return id;
 }
 
-export function addShape(ydoc, origin, { type, points, bounds, color, width, userId, recognized }) {
+export function addShape(
+  ydoc, origin,
+  { type, points, bounds, color, width, userId, recognized, layerId }
+) {
   const id = newId('shape');
   ydoc.transact(() => {
     getElements(ydoc).set(id, {
@@ -156,6 +163,7 @@ export function addShape(ydoc, origin, { type, points, bounds, color, width, use
       color,
       width,
       recognized: !!recognized,
+      layerId: layerId || DEFAULT_LAYER_ID,
       seq: nextSeq(),
       timestamp: Date.now(),
     });
@@ -164,7 +172,7 @@ export function addShape(ydoc, origin, { type, points, bounds, color, width, use
 }
 
 /** Text gets a Y.Text body so two people editing the same box merge instead of clobbering. */
-export function addText(ydoc, origin, { text, x, y, color, userId }) {
+export function addText(ydoc, origin, { text, x, y, color, userId, layerId }) {
   const id = newId('text');
   ydoc.transact(() => {
     const el = new Y.Map();
@@ -175,6 +183,7 @@ export function addText(ydoc, origin, { text, x, y, color, userId }) {
     el.set('x', x);
     el.set('y', y);
     el.set('color', color);
+    el.set('layerId', layerId || DEFAULT_LAYER_ID);
     el.set('seq', nextSeq());
     el.set('body', body);
     getElements(ydoc).set(id, el);

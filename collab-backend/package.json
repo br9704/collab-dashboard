@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "echo \"No tests yet — see masterplan.md Sprint 5\" && exit 0"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "socket.io",
@@ -27,5 +28,9 @@
     "uuid": "^13.0.0",
     "ws": "^8.21.3",
     "yjs": "^13.6.32"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.3",
+    "vitest": "^3.2.7"
   }
 }

@@ -10,7 +10,7 @@ with a one-line reason).
 **Rule:** never delete or rewrite content in this file. Expand it in place — add sub-tasks,
 file paths, edge cases, findings. Deepen, don't replace.
 
-**Current sprint pointer:** → Sprint 5 (Sprints 0–4 closed 2026-08-14)
+**Current sprint pointer:** → Sprint 6 (Sprints 0–5 closed 2026-08-14)
 
 ---
 
@@ -581,25 +581,102 @@ cursor (0 interpolated frames) and loops no animation.
 
 ---
 
-## Sprint 5 — Tests + CI
+## Sprint 5 — Tests + CI ✅ CLOSED 2026-08-14
 
 **Intent:** close the 15-test-reports-against-zero-tests gap, starting with the pure logic
 where the value per line is highest.
 
-- [ ] Vitest over `collab-frontend/src/utils/permissions.js` (388 LOC of pure role logic).
-- [ ] Vitest over `collab-backend/roles.js` (170 LOC — the permission matrix).
-- [ ] Vitest over `collab-frontend/src/utils/shapeRecognition.js` (447 LOC of geometry).
-- [ ] **The race regression test.** Promote the Sprint 1 repro into an integration test that
+- [x] Vitest over `collab-frontend/src/utils/permissions.js` (388 LOC of pure role logic).
+- [x] Vitest over `collab-backend/roles.js` (170 LOC — the permission matrix).
+- [x] Vitest over `collab-frontend/src/utils/shapeRecognition.js` (447 LOC of geometry).
+- [x] **The race regression test.** Promote the Sprint 1 repro into an integration test that
       drives a real socket client the way the app does and asserts `creator` / `ONLINE 1`.
       It must fail against pre-Sprint-1 code — verify that, or it proves nothing.
-- [ ] Replace the backend `test` script, which currently fails by construction.
-- [ ] GitHub Actions on push: install, build both, test both.
+- [x] Replace the backend `test` script, which currently fails by construction.
+- [x] GitHub Actions on push: install, build both, test both.
 
 **Gate:** `npm test` passes and is meaningful · the race test demonstrably fails on the old
 code · CI green.
 
-**As-shipped delta:** _(fill at close)_
-**Deferred:** _(fill at close)_
+**Verification — PASSED 2026-08-14. 95 unit + integration tests, plus 65 e2e checks.**
+
+```
+collab-backend   roles.test.mjs                 13
+                 store.test.mjs                  9
+                 session.integration.test.mjs   10   ← the race regression
+collab-frontend  permissions.test.js            20
+                 shapeRecognition.test.js       18
+                 doc.test.js                    25   ← the CRDT modelling rules
+                 ─────────────────────────────────
+                                                95   all passing
+```
+
+e2e gates, all green and re-run three times for stability: two-window 15/15 · persistence
+9/9 · CRDT permissions 9/9 · features 11/11 · motion 12/12 · **offline 8/8**.
+
+**THE TESTS FOUND SIX REAL BUGS.** That is the argument for having written them:
+
+1. **`addStroke` never stored `layerId`.** Strokes belonged to no layer, so hiding a layer
+   left them visible and deleting one left them orphaned on the board — reachable by no
+   control. Layers had *looked* like they worked because the panel updated.
+2. **Corner detection was inverted.** `getAngle` returns the angle *between* the two vectors
+   meeting at a point, so a perfectly straight run scores 180° — and the check was
+   `abs(angle) > 25`. Every point on every straight edge counted as a corner: a 48-point
+   rectangle reported **46 corners**. Since `tryRectangle` accepts only 3–5, **rectangle,
+   triangle and diamond recognition could never fire on a real stroke.**
+3. **Corner detection was not cyclic**, so a closed shape lost the corner it started on —
+   a rectangle came back with 3 corners and fell into the triangle detector.
+4. **`tryCircle` had no roundness test.** It checked closure, convexity and aspect ratio, all
+   of which a rectangle satisfies. Cleanly drawn rectangles were recognised as circles.
+5. **The corner-count gates overlapped** (rectangle 3–5, triangle 2–4, diamond 3–5), so all
+   three fired on the same stroke and a flat confidence constant picked the winner. Rectangle
+   and diamond now discriminate on *where* the corners sit: box corners versus edge midpoints.
+6. **Accepting a shape recognition ADDED a clean shape without removing the rough stroke**,
+   leaving both perfectly overlapped — so a recognised drawing silently doubled its element
+   count and an undo removed only half of what the user could see. MOTION.md describes the
+   stroke *becoming* the shape; it now does.
+
+And fixing (6) exposed a seventh: **a recognised line, triangle, diamond or arrow rendered
+nothing at all.** They are stored with `bounds` and no points, and the renderer only handled
+bounds for rectangles and circles. The raw stroke had been masking it. Accepting a line
+recognition therefore erased your stroke and drew empty space — caught only because the
+persistence gate started failing on a board that should have been restored.
+
+**As-shipped delta:**
+- **The offline clause deferred from Sprint 2 is now closed properly** (`offline.cjs`): A is
+  taken offline at the network level, keeps drawing, B draws concurrently, A returns — and
+  **both boards converge on all four elements with nothing clobbered**. A last-write-wins
+  system loses one side here; this is the whole reason for choosing a CRDT.
+- **A scope limit found and stated rather than glossed:** `y-indexeddb` caches the
+  *document*, not the application shell. There is no service worker, so reloading the page
+  while offline fails at the network — the HTML cannot be fetched. "Offline" means the
+  session survives an outage, not that the app is installable.
+- The integration suite starts the **real server in-process on an ephemeral port** and drives
+  it over a real socket, including a test that *documents the race* by subscribing after the
+  emit and asserting the broadcast is genuinely missed. If a future refactor moves initial
+  state back onto the broadcast, that test keeps passing while the two beside it fail —
+  which is the signal we want.
+- Tests are written against **properties**, not transcriptions of the implementation: the
+  privilege hierarchy holds, unknown roles and actions fail closed, `getPermittedActions`
+  agrees with `canPerformAction` for every pair, a 500-point stroke costs the same document
+  ops as a 5-point one.
+- `store.test.mjs` runs against a real SQLite file in a temp dir, and reopens it in a fresh
+  module instance to simulate a process restart. A mock of a database cannot tell you whether
+  the schema and the queries agree.
+- One test was wrong rather than the code: `exportPermissions` returns an array of
+  `{ userId, permissions }`, which is a perfectly good contract. Corrected the test.
+- CI (`.github/workflows/ci.yml`): build + unit tests, then a smoke job running the
+  integration suite and curling `/health` against a real process. Concurrency group cancels
+  superseded runs. Simulated locally end to end before committing.
+
+**Deferred:**
+- **CI has not run on GitHub**, because nothing has been pushed — the push is owner-gated and
+  belongs to Sprint 8. The workflow is verified by executing each step locally; it is not
+  verified by a green check on a PR, and is not claimed as such.
+- No coverage threshold is enforced. Coverage numbers on a codebase this young would be a
+  vanity metric; the six bugs above are the evidence that matters.
+- The e2e harnesses live outside the repo (they need Playwright and a running stack). Folding
+  them into CI would need a browser image and a compose step → not attempted.
 
 ---
 
