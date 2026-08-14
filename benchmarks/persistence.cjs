@@ -16,7 +16,9 @@ const { spawn, execSync } = require('child_process');
 const path = require('path');
 
 const APP = 'http://localhost:5173';
-const BACKEND_DIR = '/Users/brunojaamaa/Desktop/collab-dashboard/collab-backend';
+// Derived from this file's location, not hardcoded: a benchmark that only runs on the
+// machine that wrote it is not a benchmark.
+const BACKEND_DIR = path.resolve(__dirname, '..', 'collab-backend');
 
 const results = [];
 const check = (name, pass, detail) => {

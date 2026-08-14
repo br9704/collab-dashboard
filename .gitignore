@@ -19,3 +19,9 @@ coverage/
 opencode.json
 collab-backend/data/
 *.sqlite*
+
+# Local agent tooling. These hold absolute paths to one developer's machine and
+# are wired by `aethereum init` per-checkout — they are not project config.
+.claude/
+.codex/
+.cursor/

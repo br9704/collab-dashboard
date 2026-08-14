@@ -14,6 +14,9 @@ npm run dev                        # backend :3001, frontend :5173
 node benchmarks/sync-latency.cjs   # in another shell
 ```
 
+Playwright is deliberately not a project dependency — it would add a browser download to
+every `npm install` for something only run by hand.
+
 | Script | What it proves |
 |---|---|
 | `sync-latency.cjs` | end-to-end sync time — the number in the README |
