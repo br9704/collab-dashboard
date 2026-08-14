@@ -7,9 +7,9 @@ Socket.io on the back. Sessions, live cursors, shared strokes, roles, comments.
 
 > **Status: under active repair.**
 > Two people can open one board and draw together — live cursors, correct roles, working
-> undo — and **the board survives a server restart**. Verified in real browser windows
-> against a real process kill. What remains is listed below: several UI features are still
-> not wired to the server, and it cannot yet be deployed. Work follows
+> undo — and **the board survives a server restart**. Every control in the interface now
+> round-trips to the other window. Verified in real browser windows against a real process
+> kill. What remains is listed below, and it cannot yet be deployed. Work follows
 > [`masterplan.md`](masterplan.md); this section shrinks as sprints close.
 
 ---
@@ -24,7 +24,9 @@ These are measured, not suspected. Each links to the sprint that closes it.
 | ~~`cursor-move` never emitted~~ | ~~live cursors never transmit~~ | **fixed, Sprint 1** |
 | ~~bare `socket.off(event)` unhooks other components~~ | ~~remote cursors silently stopped rendering~~ | **fixed, Sprint 1** |
 | ~~`Session.undo()` only moves an index~~ | ~~Ctrl+Z changed a number; no ink disappeared~~ | **fixed, Sprint 1** |
-| 13 client events have no server handler | Templates, Smart Shapes, Layers, Text Formatting and Video Embed do nothing at all | Sprint 3 |
+| ~~13 client events have no server handler~~ | ~~Templates, Smart Shapes, Layers, Text Formatting and Video Embed did nothing at all~~ | **fixed, Sprint 3** |
+| Template connectors are not drawn | Flowchart templates load as unconnected boxes | Sprint 4 |
+| Export (PNG/SVG/JSON) is not wired up | The export dialog does nothing | Sprint 4 |
 | ~~All state in memory; sessions deleted when the last user leaves~~ | ~~nothing survived a restart~~ | **fixed, Sprint 2** |
 | Socket URL and CORS origins are hardcoded to `localhost` | Cannot be deployed anywhere yet | Sprint 6 |
 | Zero tests | No regression safety | Sprint 5 |
@@ -54,6 +56,9 @@ Verified by running the server and driving it with scripted clients and real bro
   geometric heuristics that snap a rough stroke to a clean rectangle, circle, line, triangle,
   diamond or arrow. **This is geometry, not machine learning.** It was previously described
   as "AI shape completion"; it is more interesting stated honestly.
+- **Layers, templates, smart shapes, text formatting and video embeds** — all document
+  state, so all of it merges, persists and reaches every collaborator. Loading a template is
+  additive and atomic: one transaction, one undo step, and it never deletes anyone's work.
 - **Latency instrumentation** — a `latency-ping`/`latency-pong` round trip you can measure.
 
 ### Measured latency

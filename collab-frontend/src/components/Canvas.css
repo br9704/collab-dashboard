@@ -1,6 +1,11 @@
 .canvas-container {
   position: relative;
   flex: 1;
+  /* Flex items default to min-width:auto and refuse to shrink below their content, so this
+     container was overflowing its row: the canvas measured 1440px wide inside a ~870px
+     visible area. Everything past the fold was still drawable but permanently off-screen —
+     you could draw where you could not see. `min-width: 0` is the fix. */
+  min-width: 0;
   height: 100%;
   background: #ffffff;
   display: flex;
@@ -202,6 +207,7 @@ label {
 
 .drawing-canvas {
   flex: 1;
+  min-width: 0;
   background: white;
   cursor: crosshair;
   touch-action: none;

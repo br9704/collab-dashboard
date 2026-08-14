@@ -10,7 +10,7 @@ with a one-line reason).
 **Rule:** never delete or rewrite content in this file. Expand it in place — add sub-tasks,
 file paths, edge cases, findings. Deepen, don't replace.
 
-**Current sprint pointer:** → Sprint 3 (Sprints 0–2 closed 2026-08-14)
+**Current sprint pointer:** → Sprint 4 (Sprints 0–3 closed 2026-08-14)
 
 ---
 
@@ -381,34 +381,94 @@ non-member, and a genuine token minted for a *different* board.
 
 ---
 
-## Sprint 3 — Feature completion (D4)
+## Sprint 3 — Feature completion (D4) ✅ CLOSED 2026-08-14
 
 **Intent:** no emitter without a receiver. Thirteen client events currently emit into the
 void, which is why Templates, Smart Shapes, Layers, Text Formatting and Video Embed do
 nothing at all.
 
 Document state, built on the Y.Doc from Sprint 2:
-- [ ] `layer-create` · `layer-update` · `layer-delete` · `layer-order-change`
-- [ ] `text-formatting-update`
-- [ ] `template-load`
-- [ ] `smart-shape-place`
-- [ ] `shape-recognition-accept` (renamed from `ai-shape-accept` in Sprint 0)
-- [ ] `video-embed` · `video-embed-move` · `video-embed-remove`
+- [x] `layer-create` · `layer-update` · `layer-delete` · `layer-order-change`
+- [x] `text-formatting-update`
+- [x] `template-load`
+- [x] `smart-shape-place`
+- [x] `shape-recognition-accept` (renamed from `ai-shape-accept` in Sprint 0)
+- [x] `video-embed` · `video-embed-move` · `video-embed-remove`
 
 Ephemeral / control, staying on sockets:
-- [ ] `tool-change`
-- [ ] `permission-change`
+- [x] `tool-change`
+- [x] `permission-change`
 
-- [ ] Permission check and activity-log entry on every mutating path, matching the existing
+- [x] Permission check and activity-log entry on every mutating path, matching the existing
       `canPerformAction` pattern in `roles.js`.
-- [ ] **`declare_contract`**: publish the complete socket event schema and the role/permission
+- [x] **`declare_contract`**: publish the complete socket event schema and the role/permission
       model — required by CLAUDE.md for every interface other code consumes.
 
 **Gate:** every control in the UI round-triggers to a second window · the emitted-events set
 minus the handled-events set is empty · no permission bypass on any new path.
 
-**As-shipped delta:** _(fill at close)_
-**Deferred:** _(fill at close)_
+**Verification — PASSED 2026-08-14.** 44 checks across four harnesses, all green.
+
+*Feature round-trip* (`features.cjs`, two real browsers) — **11/11**. Every previously-dead
+control driven through the real UI in window A and asserted in window B, which learns about it
+only over the wire: role change (viewer → editor, including the document reconnect) · layers
+(A=2 rows, B=2 rows) · templates (B ink 0 → 5,941 px) · smart shapes (5,941 → 6,901 px) ·
+text creation (B holds 7 elements) · **text formatting** (7,359 → 7,467 px) · video embed
+(1 embed rendered in B) · tool selection (visible as a glyph in B) · **zero console errors in
+either window**.
+
+*Orphan audit* — the emitted-events set minus the handled-events set is **empty**:
+```
+client emits : latency-ping permission-change role-change session-create session-join
+server handles: can-i disconnect latency-ping permission-change role-change
+                session-create session-join tool-change
+ORPHANED: 0
+```
+
+*Regressions* — Sprint 1 two-window **15/15**, Sprint 2 persistence **9/9**, CRDT
+permissions **9/9**, all still green after this sprint's changes.
+
+**As-shipped delta:**
+- **A layout bug found by the gate, and it was a correctness bug, not cosmetics.** The canvas
+  measured **1440 px wide inside a ~870 px visible area** — flex items default to
+  `min-width: auto` and refuse to shrink below their content, so `.canvas-container`
+  overflowed its row. Everything past the fold was still drawable but permanently off-screen:
+  **you could draw where you could not see, and clicks there hit the sidebar instead.**
+  Fixed with `min-width: 0`. This is why smart-shape placement appeared not to work.
+- **An id-shadowing bug in the document read path.** `readElements` returned
+  `{ id, ...value }`, so a stored `id` field overrode the authoritative Map key. Video embeds
+  came back with `id: undefined` — React reported duplicate keys, and move/remove by id could
+  never have worked. The Map key is now applied last, and `addVideoEmbed` no longer stores an
+  `id` inside the value.
+- **`TextFormattingToolbar`'s JSDoc contradicts its own implementation.** The documented props
+  (`isBold`, `onBoldToggle`, `onFontSizeChange`, …) do not exist; the real signature is
+  `(isVisible, selectedTextId, onFormatChange, currentFormatting)`. Wired to the code, not the
+  comment, and the discrepancy noted at the call site.
+- **`tool-change` was going to be a handler with no caller** — the mirror image of the
+  original problem. Rather than ship a dead handler in the other direction, tool selection is
+  now broadcast and **rendered**: each collaborator's current tool appears as a monospace
+  glyph beside their name in the user list.
+- **Templates are additive.** The previous implementation replaced the canvas outright, which
+  on a shared board would silently delete everyone else's work. A template now loads inside
+  **one transaction**, so collaborators never see a half-built diagram and a single Ctrl+Z
+  undoes the whole load.
+- **Deleting a layer deletes its elements.** Orphaning them would leave ink on the board that
+  no layer control can reach — invisible to the panel, still rendered, impossible to remove.
+- `data-doc-elements` / `data-doc-layers` added to the status block as testability
+  affordances, alongside the existing `data-doc-status` / `data-doc-synced`.
+- `API.md` rewritten as the authoritative contract (the `declare_contract` deliverable):
+  both protocols, the element schema, the five modelling rules, the token scheme and the
+  permission boundary.
+
+**Deferred:**
+- **Connectors between template shapes are not drawn.** `createCanvasFromTemplate` returns an
+  `initialConnectors` array; the shapes render, the arrows between them do not. Flowchart
+  templates therefore load as unconnected boxes. Not claimed anywhere as working → **Sprint 4**,
+  which owns rendering.
+- Synchronised camera / "follow me" — the camera rides Awareness and peers publish it, but no
+  UI consumes it → Sprint 4.
+- `ExportDialog` is still unwired (PNG/SVG/JSON export). It was not in the orphaned-event set
+  because it never emitted anything — it is a local-only dialog → Sprint 4.
 
 ---
 

@@ -15,6 +15,9 @@ import TextInputDialog from './TextInputDialog';
 import CursorPresence from './CursorPresence';
 import PresenceHalo from './PresenceHalo';
 import ShapeRecognition from './ShapeRecognition';
+import VideoEmbedCanvas from './VideoEmbedCanvas';
+import TextFormattingToolbar from './TextFormattingToolbar';
+import { SHAPE_CONFIG } from '../utils/shapeUtils';
 import { KIND } from '../collab/doc';
 import './Canvas.css';
 
@@ -26,7 +29,16 @@ import './Canvas.css';
  * @param {string}   props.userRole        - 'creator' | 'editor' | 'viewer'
  * @param {Function} props.onSelectElement
  */
-export default function Canvas({ doc, currentUserId, userRole, onSelectElement }) {
+export default function Canvas({
+  doc,
+  currentUserId,
+  userRole,
+  activeLayerId,
+  onToolChange,
+  selectedSmartShape,
+  onSmartShapeCleared,
+  onSelectElement,
+}) {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
 
@@ -45,6 +57,7 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
 
   const [lastCompletedStroke, setLastCompletedStroke] = useState(null);
   const [canvasRect, setCanvasRect] = useState(null);
+  const [selectedTextId, setSelectedTextId] = useState(null);
 
   const currentStrokeRef = useRef(null);
   const shapeStartRef = useRef(null);
@@ -59,12 +72,44 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
 
   const canDraw = userRole !== 'viewer';
 
+  /**
+   * Selecting a tool is broadcast so collaborators can see what everyone is holding —
+   * shown as a glyph beside each name in the user list. Ephemeral by nature, so it goes
+   * over sockets rather than into the persisted document.
+   */
+  const selectTool = useCallback((next) => {
+    setTool(next);
+    onToolChange?.(next);
+  }, [onToolChange]);
+
   const elements = doc?.elements || [];
   const peers = doc?.peers || [];
+  const layers = doc?.layers || [];
 
-  const strokes = useMemo(() => elements.filter((e) => e.kind === KIND.STROKE), [elements]);
-  const shapes = useMemo(() => elements.filter((e) => e.kind === KIND.SHAPE), [elements]);
-  const texts = useMemo(() => elements.filter((e) => e.kind === KIND.TEXT), [elements]);
+  /**
+   * Layer visibility. A layer that is not in the map at all counts as visible — otherwise a
+   * document written before layers existed would render as a blank board.
+   */
+  const hiddenLayers = useMemo(() => {
+    const hidden = new Set();
+    layers.forEach((l) => { if (l.visible === false) hidden.add(l.id); });
+    return hidden;
+  }, [layers]);
+
+  const visible = useMemo(
+    () => elements.filter((e) => !e.layerId || !hiddenLayers.has(e.layerId)),
+    [elements, hiddenLayers]
+  );
+
+  const strokes = useMemo(() => visible.filter((e) => e.kind === KIND.STROKE), [visible]);
+  const shapes = useMemo(() => visible.filter((e) => e.kind === KIND.SHAPE), [visible]);
+  const texts = useMemo(() => visible.filter((e) => e.kind === KIND.TEXT), [visible]);
+  const videos = useMemo(() => visible.filter((e) => e.kind === KIND.VIDEO), [visible]);
+
+  const selectedText = useMemo(
+    () => texts.find((t) => t.id === selectedTextId) || null,
+    [texts, selectedTextId]
+  );
 
   // ── Tool shortcuts ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -73,8 +118,8 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
       const el = document.activeElement;
       if (el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.isContentEditable) return;
 
-      const byKey = { 1: 'pencil', 2: 'line', 3: 'rectangle', 4: 'circle', 5: 'text' };
-      if (byKey[e.key]) setTool(byKey[e.key]);
+      const byKey = { 1: 'pencil', 2: 'line', 3: 'rectangle', 4: 'circle', 5: 'text', 6: 'select' };
+      if (byKey[e.key]) selectTool(byKey[e.key]);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -154,7 +199,10 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
         ctx.strokeStyle = shape.color;
         ctx.lineWidth = (shape.width || 2) / camera.zoom;
 
-        if (shape.type === 'line' && shape.points?.length === 2) {
+        // Smart shapes and template shapes: a positioned box drawn by SHAPE_CONFIG.
+        if (shape.smart && shape.x !== undefined) {
+          renderSmartShape(ctx, shape);
+        } else if (shape.type === 'line' && shape.points?.length === 2) {
           ctx.beginPath();
           ctx.moveTo(shape.points[0].x, shape.points[0].y);
           ctx.lineTo(shape.points[1].x, shape.points[1].y);
@@ -192,9 +240,29 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
       });
 
       texts.forEach((t) => {
+        const f = t.formatting || {};
+        const size = f.fontSize || 16;
         ctx.fillStyle = t.color || '#111111';
-        ctx.font = '16px ui-monospace, SFMono-Regular, Menlo, monospace';
+        ctx.font = `${f.italic ? 'italic ' : ''}${f.bold ? 'bold ' : ''}${size}px ui-monospace, SFMono-Regular, Menlo, monospace`;
         ctx.fillText(t.text || '', t.x, t.y);
+
+        if (f.underline || f.strikethrough) {
+          const w = ctx.measureText(t.text || '').width;
+          ctx.strokeStyle = t.color || '#111111';
+          ctx.lineWidth = 1 / camera.zoom;
+          const yOff = f.underline ? 4 : -size / 3;
+          ctx.beginPath();
+          ctx.moveTo(t.x, t.y + yOff);
+          ctx.lineTo(t.x + w, t.y + yOff);
+          ctx.stroke();
+        }
+
+        if (t.id === selectedTextId) {
+          const w = ctx.measureText(t.text || '').width;
+          ctx.strokeStyle = '#ffb000';
+          ctx.lineWidth = 1 / camera.zoom;
+          ctx.strokeRect(t.x - 3, t.y - size, w + 6, size + 6);
+        }
       });
 
       ctx.restore();
@@ -205,7 +273,7 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [strokes, shapes, texts, camera]);
+  }, [strokes, shapes, texts, camera, selectedTextId]);
 
   // ── Pointer handling ─────────────────────────────────────────────────────
 
@@ -230,12 +298,37 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
 
     if (!canDraw) {
       // A viewer can still select an element to read or add comments on it.
-      onSelectElement?.(hitTest(pt));
+      const hit = hitTest(pt);
+      onSelectElement?.(hit);
+      setSelectedTextId(texts.find((t) => t.id === hit) ? hit : null);
+      return;
+    }
+
+    // Smart shape placement: one click drops the selected shape and clears the selection.
+    if (selectedSmartShape) {
+      const config = SHAPE_CONFIG[selectedSmartShape.type] || {};
+      const w = config.defaultWidth || 120;
+      const h = config.defaultHeight || 60;
+      doc.placeSmartShape({
+        type: selectedSmartShape.type,
+        x: pt.x - w / 2,
+        y: pt.y - h / 2,
+        width: w,
+        height: h,
+        color,
+        lineWidth,
+        label: config.name || selectedSmartShape.type,
+        connectorStyle: selectedSmartShape.connectorStyle || 'line',
+        layerId: activeLayerId,
+      });
+      onSmartShapeCleared?.();
       return;
     }
 
     if (tool === 'select') {
-      onSelectElement?.(hitTest(pt));
+      const hit = hitTest(pt);
+      onSelectElement?.(hit);
+      setSelectedTextId(texts.find((t) => t.id === hit) ? hit : null);
       return;
     }
 
@@ -315,7 +408,7 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
     if (tool === 'pencil' && currentStrokeRef.current?.length > 1) {
       const points = [...currentStrokeRef.current];
       // ONE document operation for the whole stroke — never one op per point.
-      doc.addStroke({ points, color, width: lineWidth });
+      doc.addStroke({ points, color, width: lineWidth, layerId: activeLayerId });
       setLastCompletedStroke(points);
       currentStrokeRef.current = null;
       dirtyRef.current = true;
@@ -325,6 +418,7 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
         points: [shapeStartRef.current, pt],
         color,
         width: lineWidth,
+        layerId: activeLayerId,
       });
       shapeStartRef.current = null;
       dirtyRef.current = true;
@@ -367,19 +461,20 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
 
   const handleTextSubmit = (text) => {
     const pos = textInputPositionRef.current;
-    if (pos && text) doc.addText({ text, x: pos.x, y: pos.y, color });
+    if (pos && text) doc.addText({ text, x: pos.x, y: pos.y, color, layerId: activeLayerId });
     textInputPositionRef.current = null;
     setTextDialogOpen(false);
   };
 
   const handleRecognitionAccept = useCallback(({ shape, bounds }) => {
     if (!bounds) return;
-    doc.addShape({ type: shape, points: [], bounds, color, width: lineWidth, recognized: true });
+    doc.addShape({ type: shape, points: [], bounds, color, width: lineWidth, recognized: true, layerId: activeLayerId });
     setLastCompletedStroke(null);
   }, [doc, color, lineWidth]);
 
   const getCursorStyle = () => {
     if (isDraggingCanvas) return 'grabbing';
+    if (selectedSmartShape && canDraw) return 'cell';
     if (!canDraw) return 'not-allowed';
     if (tool === 'pencil') return 'crosshair';
     return 'default';
@@ -410,7 +505,7 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
           {TOOLS.map((t) => (
             <button
               key={t.id}
-              onClick={() => setTool(t.id)}
+              onClick={() => selectTool(t.id)}
               className={`tool-button ${tool === t.id ? 'active' : ''}`}
               disabled={!canDraw && t.id !== 'select'}
               title={`${t.label} (${t.key})`}
@@ -421,6 +516,14 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
             </button>
           ))}
         </div>
+
+        {selectedSmartShape && (
+          <div className="tool-group">
+            <div className="smart-shape-active-indicator" title="Click the canvas to place">
+              <span className="indicator-text">place</span>
+            </div>
+          </div>
+        )}
 
         <div className="tool-group">
           <input
@@ -474,6 +577,26 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
         tabIndex={0}
       />
 
+      {/* Props follow the component's ACTUAL signature, which its own JSDoc block
+          contradicts — the real one is (isVisible, selectedTextId, onFormatChange,
+          currentFormatting). Keyed on the selection so its internal toggle state resets
+          when a different text box is picked. */}
+      <TextFormattingToolbar
+        key={selectedTextId || 'none'}
+        isVisible={!!selectedText && canDraw}
+        selectedTextId={selectedTextId}
+        currentFormatting={selectedText?.formatting || {}}
+        onFormatChange={(id, formatting) => doc.setTextFormatting(id, formatting)}
+      />
+
+      <VideoEmbedCanvas
+        videoEmbeds={videos}
+        camera={camera}
+        onMove={(id, x, y) => doc.moveVideoEmbed(id, x, y)}
+        onRemove={(id) => doc.removeVideoEmbed(id)}
+        canEdit={canDraw}
+      />
+
       <CursorPresence
         peers={peers}
         currentUserId={currentUserId}
@@ -496,4 +619,36 @@ export default function Canvas({ doc, currentUserId, userRole, onSelectElement }
       )}
     </div>
   );
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Draw a smart shape or template shape: a positioned box with an optional label.
+ * Falls back to a plain rectangle when SHAPE_CONFIG has no renderer for the type, so an
+ * unknown shape is still visible rather than silently missing from the board.
+ */
+function renderSmartShape(ctx, shape) {
+  const {
+    type, x, y, width = 120, height = 60,
+    color = '#111111', lineWidth: lw = 2, label,
+  } = shape;
+
+  const config = SHAPE_CONFIG[type];
+
+  if (config?.draw) {
+    config.draw(ctx, x, y, width, height, color, lw);
+  } else {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lw;
+    ctx.strokeRect(x, y, width, height);
+  }
+
+  if (label) {
+    ctx.fillStyle = color;
+    ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x + width / 2, y + height / 2 + 4);
+    ctx.textAlign = 'left';
+  }
 }

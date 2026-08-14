@@ -93,6 +93,7 @@ function sessionView(sessionId) {
     createdAt: row.created_at,
     users: Array.from(l.sockets),
     sessionMembers: store.listMembers(sessionId),
+    permissionOverrides: l.overrides || {},
     activityLog: l.activity.slice(-50),
   };
 }
@@ -274,6 +275,53 @@ io.on('connection', (socket) => {
    */
   socket.on('can-i', (action, callback) => {
     callback && callback({ allowed: canPerformAction(userRole, action), role: userRole });
+  });
+
+  /**
+   * TOOL-CHANGE — ephemeral, stays on sockets.
+   *
+   * Which tool someone has selected is presence-shaped: it is about right now, and writing
+   * it into the persisted document would be wrong. The client emitted this from day one;
+   * there was simply never a handler, so nobody ever saw anyone else's tool.
+   */
+  socket.on('tool-change', (data) => {
+    if (!currentSessionId || !data?.mode) return;
+    if (!canPerformAction(userRole, 'draw-stroke')) return;
+    socket.to(currentSessionId).emit('tool-changed', { userId, mode: data.mode });
+  });
+
+  /**
+   * PERMISSION-CHANGE — granular per-user permission overrides, creator only.
+   *
+   * These sit on top of the role matrix rather than replacing it: a role is the baseline and
+   * an override adjusts one capability. Overrides are control-plane state and are broadcast
+   * so every client's UI agrees, but the hard boundary remains the read-only flag applied to
+   * the document connection by role.
+   */
+  socket.on('permission-change', (change) => {
+    if (!currentSessionId) return;
+
+    if (userRole !== ROLES.CREATOR) {
+      console.warn(`[PERMISSION DENIED] ${userId} (${userRole}) tried to change permissions`);
+      return;
+    }
+    if (!change?.userId || !change?.permission) return;
+
+    const l = liveFor(currentSessionId);
+    if (!l.overrides) l.overrides = {};
+    if (!l.overrides[change.userId]) l.overrides[change.userId] = {};
+    l.overrides[change.userId][change.permission] = !!change.granted;
+
+    logActivity(currentSessionId, 'permission-changed', userId, {
+      targetId: change.userId,
+      permission: change.permission,
+      granted: !!change.granted,
+    });
+
+    io.to(currentSessionId).emit('permissions-snapshot', {
+      overrides: l.overrides,
+      changedBy: userId,
+    });
   });
 
   socket.on('latency-ping', (data) => {

@@ -126,10 +126,21 @@ per-browser client id; and Hocuspocus 4 runs on `crossws`, so hosting it on a pl
 server requires pumping `message`/`close` in by hand, otherwise the socket opens, the client
 says "connected", and nothing ever syncs with no error at all.
 
-Still open: 13 client events have no server handler, and their panels are hidden rather than
-dead (Sprint 3); UI unstyled against SIGNAL with overlapping panels (Sprint 4); zero tests,
-and offline *write*-and-reconcile still unproven (Sprint 5); undeployable — hardcoded
-localhost URLs (Sprint 6); commits authored by "Subagent" (Sprint 8, owner-gated).
+**Sprint 3 closed — no emitter without a receiver.** The 13 orphaned events are implemented
+on the document (layers, templates, smart shapes, text formatting, video embeds) or on
+sockets where they are genuinely ephemeral (tool selection, permission overrides). The
+emitted-minus-handled set is empty. 44 checks green across four harnesses. `API.md` rewritten
+as the authoritative contract.
+
+Two bugs the gate exposed were correctness, not polish: the canvas measured **1440 px wide
+inside a ~870 px visible area** (flex `min-width: auto`), so you could draw where you could
+not see and clicks landed on the sidebar; and `readElements` spread a stored `id` over the
+authoritative Map key, so every video embed came back with `id: undefined`.
+
+Still open: UI unstyled against SIGNAL, overlapping panels, template connectors undrawn and
+export unwired (Sprint 4); zero tests, and offline *write*-and-reconcile still unproven
+(Sprint 5); undeployable — hardcoded localhost URLs (Sprint 6); commits authored by
+"Subagent" (Sprint 8, owner-gated).
 
 Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 

@@ -20,8 +20,11 @@ import { IndexeddbPersistence } from 'y-indexeddb';
 import {
   getElements,
   getComments,
+  getLayers,
+  getLayerOrder,
   readElements,
   readComments,
+  readLayers,
   addStroke,
   addShape,
   addText,
@@ -29,11 +32,24 @@ import {
   deleteElement,
   addComment,
   resolveComment,
+  ensureDefaultLayer,
+  createLayer,
+  updateLayer,
+  deleteLayer,
+  reorderLayers,
+  setElementLayer,
+  setTextFormatting,
+  placeSmartShape,
+  addVideoEmbed,
+  moveVideoEmbed,
+  loadTemplate,
+  DEFAULT_LAYER_ID,
 } from '../collab/doc';
 
 export function useCollabDoc({ url, sessionId, token, userId }) {
   const [elements, setElements] = useState([]);
   const [comments, setComments] = useState([]);
+  const [layers, setLayers] = useState([]);
   const [status, setStatus] = useState('disconnected');
   const [synced, setSynced] = useState(false);
   const [offlineReady, setOfflineReady] = useState(false);
@@ -92,14 +108,25 @@ export function useCollabDoc({ url, sessionId, token, userId }) {
     const readAll = () => {
       setElements(readElements(ydoc));
       setComments(readComments(ydoc));
+      setLayers(readLayers(ydoc));
     };
     readAll();
 
     // observeDeep so a Y.Text edit inside a text element also triggers a re-read.
     const elementsObserver = () => readAll();
     const commentsObserver = () => readAll();
+    const layersObserver = () => readAll();
     getElements(ydoc).observeDeep(elementsObserver);
     getComments(ydoc).observeDeep(commentsObserver);
+    getLayers(ydoc).observeDeep(layersObserver);
+    getLayerOrder(ydoc).observe(layersObserver);
+
+    // Every board needs a default layer; created lazily so documents that predate layers
+    // pick one up on first open rather than rendering onto a layer that does not exist.
+    provider.on('synced', () => {
+      ensureDefaultLayer(ydoc, origin);
+      readAll();
+    });
 
     // ── Awareness: cursors, camera, drawing state. Never persisted. ────────
     const awareness = provider.awareness;
@@ -127,6 +154,8 @@ export function useCollabDoc({ url, sessionId, token, userId }) {
       awareness?.off('change', onAwareness);
       getElements(ydoc).unobserveDeep(elementsObserver);
       getComments(ydoc).unobserveDeep(commentsObserver);
+      getLayers(ydoc).unobserveDeep(layersObserver);
+      getLayerOrder(ydoc).unobserve(layersObserver);
       undoManager.off('stack-item-added', refreshUndoState);
       undoManager.off('stack-item-popped', refreshUndoState);
       undoManager.destroy();
@@ -152,6 +181,21 @@ export function useCollabDoc({ url, sessionId, token, userId }) {
       addComment: (c) => doc() && addComment(doc(), origin(), { ...c, author: userId }),
       resolveComment: (id) => doc() && resolveComment(doc(), origin(), id),
 
+      // ── Sprint 3: features that used to emit into the void ──────────────
+      createLayer: (name) => doc() && createLayer(doc(), origin(), name),
+      updateLayer: (id, updates) => doc() && updateLayer(doc(), origin(), id, updates),
+      deleteLayer: (id) => doc() && deleteLayer(doc(), origin(), id),
+      reorderLayers: (order) => doc() && reorderLayers(doc(), origin(), order),
+      setElementLayer: (elementId, layerId) =>
+        doc() && setElementLayer(doc(), origin(), elementId, layerId),
+      setTextFormatting: (id, formatting) =>
+        doc() && setTextFormatting(doc(), origin(), id, formatting),
+      placeSmartShape: (shape) => doc() && placeSmartShape(doc(), origin(), shape),
+      addVideoEmbed: (embed) => doc() && addVideoEmbed(doc(), origin(), embed),
+      moveVideoEmbed: (id, x, y) => doc() && moveVideoEmbed(doc(), origin(), id, x, y),
+      removeVideoEmbed: (id) => doc() && deleteElement(doc(), origin(), id),
+      loadTemplate: (canvasState) => doc() && loadTemplate(doc(), origin(), canvasState),
+
       undo: () => undoRef.current?.undo(),
       redo: () => undoRef.current?.redo(),
 
@@ -171,6 +215,8 @@ export function useCollabDoc({ url, sessionId, token, userId }) {
   return {
     elements,
     comments,
+    layers,
+    defaultLayerId: DEFAULT_LAYER_ID,
     peers,
     status,
     synced,

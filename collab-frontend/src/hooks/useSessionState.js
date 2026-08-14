@@ -25,6 +25,8 @@ export function useSessionState(socket, sessionId, initialSnapshot, clientId) {
   const [sessionMembers, setSessionMembers] = useState({});
   const [activityLog, setActivityLog] = useState([]);
   const [sessionData, setSessionData] = useState(null);
+  /** userId -> tool currently selected. Ephemeral: which tool someone holds is presence. */
+  const [peerTools, setPeerTools] = useState({});
   /** Set when the server tells this client its own role changed and the doc must reconnect. */
   const [docReconnectSignal, setDocReconnectSignal] = useState(0);
 
@@ -52,6 +54,11 @@ export function useSessionState(socket, sessionId, initialSnapshot, clientId) {
       setActivityLog((prev) => [...prev.slice(-199), entry]);
     };
 
+    const onToolChanged = (data) => {
+      if (!data?.userId || !data?.mode) return;
+      setPeerTools((prev) => ({ ...prev, [data.userId]: data.mode }));
+    };
+
     const onRoleUpdated = (data) => {
       if (!data?.userId || !data?.newRole) return;
       setSessionMembers((prev) => ({
@@ -68,6 +75,7 @@ export function useSessionState(socket, sessionId, initialSnapshot, clientId) {
     const listeners = [
       ['session-updated', onSessionUpdated],
       ['activity', onActivity],
+      ['tool-changed', onToolChanged],
       ['role-updated', onRoleUpdated],
     ];
 
@@ -80,8 +88,10 @@ export function useSessionState(socket, sessionId, initialSnapshot, clientId) {
     sessionMembers,
     activityLog,
     sessionData,
+    peerTools,
     docReconnectSignal,
 
     changeRole: (userId, newRole) => socket?.emit('role-change', { userId, newRole }),
+    changeTool: (mode) => socket?.emit('tool-change', { mode }),
   };
 }

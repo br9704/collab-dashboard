@@ -10,7 +10,11 @@ import './UserList.css';
  * @param {string} props.currentUserId  - Current user's socket ID
  * @param {string} props.userRole       - Current user's role
  */
-export default function UserList({ users, sessionMembers, currentUserId, userRole }) {
+const TOOL_GLYPH = {
+  pencil: '/', line: '—', rectangle: '▢', circle: '○', text: 'T', select: '⌖',
+};
+
+export default function UserList({ users, sessionMembers, currentUserId, userRole, peerTools }) {
   const getColor = (index) => {
     const colors = ['#ff6b6b', '#4ecdc4', '#6b7280', '#ffa502', '#a8e6cf'];
     return colors[index % colors.length];
@@ -47,6 +51,11 @@ export default function UserList({ users, sessionMembers, currentUserId, userRol
               {userId.slice(0, 8)}
               {userId === currentUserId && <span className="you-badge">(you)</span>}
             </span>
+            {peerTools?.[userId] && userId !== currentUserId && (
+              <span className="user-tool" title={`Using the ${peerTools[userId]} tool`}>
+                {TOOL_GLYPH[peerTools[userId]] || peerTools[userId]}
+              </span>
+            )}
             <span 
               className="user-role"
               style={{ color: getRoleColor(role) }}

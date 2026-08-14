@@ -27,6 +27,11 @@ import CommentsPanel from './components/CommentsPanel';
 import ActivityLog from './components/ActivityLog';
 import RolesPanel from './components/RolesPanel';
 import UndoRedoControls from './components/UndoRedoControls';
+import LayersPanel from './components/LayersPanel';
+import TemplateManager from './components/TemplateManager';
+import SmartShapes from './components/SmartShapes';
+import VideoEmbed from './components/VideoEmbed';
+import AdvancedPermissions from './components/AdvancedPermissions';
 
 import { useToast } from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -35,14 +40,6 @@ import './App.css';
 
 const SOCKET_URL = 'http://localhost:3001';
 const COLLAB_URL = 'ws://localhost:3001/collaboration';
-
-/**
- * Templates, Smart Shapes, Layers, Text Formatting, Video Embed and Advanced Permissions
- * emit socket events that no server handler has ever listened for — they have never done
- * anything. They are hidden until Sprint 3 wires them onto the document, rather than left
- * on screen as controls that silently do nothing.
- */
-const SPRINT3_FEATURES_READY = false;
 
 export default function App() {
   const { socket, connected, error, reconnectAttempt } = useSocket(SOCKET_URL);
@@ -66,6 +63,13 @@ export default function App() {
   const [showComments, setShowComments] = useState(false);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const [showRoles, setShowRoles] = useState(false);
+  const [showLayers, setShowLayers] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showSmartShapes, setShowSmartShapes] = useState(false);
+  const [showVideoEmbed, setShowVideoEmbed] = useState(false);
+  const [showAdvancedPermissions, setShowAdvancedPermissions] = useState(false);
+  const [selectedSmartShape, setSelectedSmartShape] = useState(null);
+  const [activeLayerId, setActiveLayerId] = useState(null);
   const [selectedElement, setSelectedElement] = useState(null);
 
   const session = useSessionState(socket, sessionId, initialSnapshot, clientId);
@@ -154,8 +158,46 @@ export default function App() {
     setShowComments(false);
     setShowActivityLog(false);
     setShowRoles(false);
+    setShowLayers(false);
+    setShowTemplates(false);
+    setShowSmartShapes(false);
+    setShowVideoEmbed(false);
+    setShowAdvancedPermissions(false);
+    setSelectedSmartShape(null);
+    setActiveLayerId(null);
     setSelectedElement(null);
   };
+
+  /** Templates are additive — loading one must not delete a collaborator's work. */
+  const handleTemplateLoad = (canvasState) => {
+    const added = doc.loadTemplate(canvasState);
+    setShowTemplates(false);
+    addToast(`Template loaded — ${added.elements} elements, ${added.layers} layers`, 'success');
+  };
+
+  const handleVideoEmbed = (videoData) => {
+    if (!videoData) return;
+    doc.addVideoEmbed({ ...videoData, x: 80, y: 80, layerId: activeLayerId || doc.defaultLayerId });
+    setShowVideoEmbed(false);
+  };
+
+  const handlePermissionChange = (change) => {
+    if (!isAdmin) return;
+    if (change.action === 'role-changed') {
+      session.changeRole(change.userId, change.newRole);
+    } else if (change.permission) {
+      socket?.emit('permission-change', change);
+    }
+  };
+
+  const usersForPermissions = useMemo(
+    () => (session.users || []).map((userId) => ({
+      id: userId,
+      name: userId.slice(0, 8),
+      role: session.sessionMembers?.[userId]?.role || BASE_ROLES.VIEWER,
+    })),
+    [session.users, session.sessionMembers]
+  );
 
   const commentsForSelected = useMemo(
     () => (doc.comments || []).filter((c) => c.elementId === selectedElement),
@@ -189,11 +231,22 @@ export default function App() {
       <ErrorBoundary>
         <div className="main-container" role="main" id="main-canvas">
 
+          {showSmartShapes && canEdit && (
+            <SmartShapes
+              onShapeSelected={setSelectedSmartShape}
+              selectedShape={selectedSmartShape?.type || null}
+            />
+          )}
+
           <Canvas
             sessionState={session}
             doc={doc}
             currentUserId={clientId}
             userRole={userRole}
+            activeLayerId={activeLayerId || doc.defaultLayerId}
+            onToolChange={session.changeTool}
+            selectedSmartShape={selectedSmartShape}
+            onSmartShapeCleared={() => setSelectedSmartShape(null)}
             onSelectElement={setSelectedElement}
           />
 
@@ -208,6 +261,7 @@ export default function App() {
               sessionMembers={session.sessionMembers}
               currentUserId={clientId}
               userRole={userRole}
+              peerTools={session.peerTools}
             />
 
             {showActivityLog && (
@@ -229,6 +283,26 @@ export default function App() {
                 socket={socket}
                 users={session.users}
                 sessionMembers={session.sessionMembers}
+              />
+            )}
+
+            {showLayers && (
+              <LayersPanel
+                layers={doc.layers || []}
+                layerOrder={(doc.layers || []).map((l) => l.id)}
+                onLayerCreate={doc.createLayer}
+                onLayerDelete={doc.deleteLayer}
+                onLayerUpdate={doc.updateLayer}
+                onLayerReorder={doc.reorderLayers}
+                canEdit={canEdit}
+              />
+            )}
+
+            {showAdvancedPermissions && isAdmin && permissionManager && (
+              <AdvancedPermissions
+                users={usersForPermissions}
+                permissionManager={permissionManager}
+                onPermissionChange={handlePermissionChange}
               />
             )}
 
@@ -266,10 +340,65 @@ export default function App() {
               </button>
             )}
 
-            {/* Sprint 3 wires Templates / Smart Shapes / Layers / Video / Permissions onto
-                the document. Until then they are hidden rather than shown as dead controls. */}
-            {SPRINT3_FEATURES_READY && canEdit && (
-              <div className="sprint3-placeholder" />
+            {canEdit && (
+              <button
+                className={`panel-toggle ${showLayers ? 'active-panel' : ''}`}
+                onClick={() => setShowLayers(!showLayers)}
+                aria-label="Toggle layers panel"
+                aria-expanded={showLayers}
+                title="Manage drawing layers"
+              >
+                📚 Layers
+              </button>
+            )}
+
+            {canEdit && (
+              <button
+                className="panel-toggle"
+                onClick={() => setShowTemplates(true)}
+                aria-label="Open template manager"
+                title="Load a pre-made whiteboard template"
+              >
+                🗂️ Templates
+              </button>
+            )}
+
+            {canEdit && (
+              <button
+                className={`panel-toggle ${showSmartShapes ? 'active-panel' : ''}`}
+                onClick={() => {
+                  setShowSmartShapes(!showSmartShapes);
+                  if (showSmartShapes) setSelectedSmartShape(null);
+                }}
+                aria-label="Toggle smart shapes panel"
+                aria-expanded={showSmartShapes}
+                title="Smart shapes and flowchart elements"
+              >
+                🔷 Shapes
+              </button>
+            )}
+
+            {canEdit && (
+              <button
+                className="panel-toggle"
+                onClick={() => setShowVideoEmbed(true)}
+                aria-label="Open video embed dialog"
+                title="Embed a video on the canvas"
+              >
+                🎬 Video
+              </button>
+            )}
+
+            {isAdmin && (
+              <button
+                className={`panel-toggle ${showAdvancedPermissions ? 'active-panel' : ''}`}
+                onClick={() => setShowAdvancedPermissions(!showAdvancedPermissions)}
+                aria-label="Toggle advanced permissions panel"
+                aria-expanded={showAdvancedPermissions}
+                title="Manage granular permissions"
+              >
+                🔐 Permissions
+              </button>
             )}
 
             <div className="session-info">
@@ -289,6 +418,8 @@ export default function App() {
                 className="doc-status"
                 data-doc-status={doc.status}
                 data-doc-synced={doc.synced ? 'yes' : 'no'}
+                data-doc-elements={(doc.elements || []).length}
+                data-doc-layers={(doc.layers || []).length}
                 title="Document connection state"
               >
                 Doc: {doc.status}{doc.synced ? ' · synced' : ''}
@@ -308,6 +439,18 @@ export default function App() {
           <LatencyMeter socket={socket} />
         </div>
       </ErrorBoundary>
+
+      <TemplateManager
+        isOpen={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        onLoadTemplate={handleTemplateLoad}
+      />
+
+      <VideoEmbed
+        isOpen={showVideoEmbed}
+        onClose={() => setShowVideoEmbed(false)}
+        onVideoEmbed={handleVideoEmbed}
+      />
 
       <ToastContainer />
     </div>
