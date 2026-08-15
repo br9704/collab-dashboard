@@ -227,6 +227,25 @@ was tracked**, contradicting this file's masterplan correction #2 — deleted, p
 "do not leave it ambiguous". And `REDESIGN_SUMMARY.txt` survived Sprint 0's purge because that
 purge counted `.md` files.
 
+**Deployed 2026-08-15 — there is a URL.** Frontend `https://collab-frontend-omega.vercel.app`,
+backend `https://collab-dashboard-backend.fly.dev` (Fly, `lhr`, one machine, 1 GB volume verified
+mounted with `df`). The two-window gate passes **15/15 against the live deployment**. CORS is
+enforced in production. `vercel.json` had a `comment` key inside its rewrite that Vercel's schema
+rejects, so the runbook had in fact never worked until it was run.
+
+Deploying found a bug local work could not: `SessionManager` gated on the socket *object*, which
+exists immediately, not on `connected`, which does not. Over the internet that left "New Session"
+clickable for a second while it could only fail. Fixed; both buttons now wait for the connection.
+
+Deployed end-to-end sync is **p50 299 ms / p95 382 ms, n=30** — but TCP connect is 24 ms and a bare
+`/health` takes ~340 ms on a warm machine, so ~285 ms is trial-tier server time, on a machine Fly
+stops every five minutes without a card. **The "50–80 ms sync" line is withdrawn**: unbacked
+before, contradicted now (7–8 ms local, 299 ms deployed).
+
+Still not true: two *different machines* (every measurement has both browsers on one laptop), no
+authentication, offline caches the document but not the app shell, synchronised camera published
+but unconsumed, and the hosting is a free trial.
+
 Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 
 ## MOTION.md (binding)

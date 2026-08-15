@@ -5,14 +5,21 @@ import { getClientId } from '../collab/identity';
  * SessionManager — landing screen for creating or joining a collaborative session.
  * Displays session ID input, create/join buttons, and connection status.
  *
+ * A socket OBJECT exists the instant io() is called; it is not usable until it has actually
+ * connected. On localhost that gap is a few milliseconds and nobody ever saw it. Deployed, it
+ * is a second or more — long enough to click — and clicking in that window used to set
+ * "Not connected to server" and do nothing, on a button that looked ready. Hence `connected`:
+ * the buttons wait for the connection rather than the object.
+ *
  * @param {Object}   props
  * @param {Object}   props.socket        - Socket.io client instance
+ * @param {boolean}  props.connected     - Whether that socket has actually connected
  * @param {Function} props.onSessionJoin - Called with (sessionId, sessionSnapshot, collabToken).
  *   The snapshot is the server's ack payload and is the authoritative initial state — see the
  *   comment in handleCreate for why it must not be discarded. The collabToken authorises this
  *   client's Yjs document connection and is verified server-side on every connect.
  */
-export default function SessionManager({ socket, onSessionJoin }) {
+export default function SessionManager({ socket, connected, onSessionJoin }) {
   const [sessionId, setSessionId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,8 +30,10 @@ export default function SessionManager({ socket, onSessionJoin }) {
     inputRef.current?.focus();
   }, []);
 
+  const ready = Boolean(socket && connected);
+
   const handleCreate = () => {
-    if (!socket) {
+    if (!ready) {
       setError('Not connected to server');
       return;
     }
@@ -47,7 +56,7 @@ export default function SessionManager({ socket, onSessionJoin }) {
       setError('Please enter a session ID');
       return;
     }
-    if (!socket) {
+    if (!ready) {
       setError('Not connected to server');
       return;
     }
@@ -79,11 +88,11 @@ export default function SessionManager({ socket, onSessionJoin }) {
         <div className="button-group">
           <button
             onClick={handleCreate}
-            disabled={loading}
+            disabled={loading || !ready}
             className="btn btn-primary"
             aria-label="Create a new whiteboard session"
           >
-            New Session
+            {ready ? 'New Session' : 'Connecting…'}
           </button>
         </div>
 
@@ -102,7 +111,7 @@ export default function SessionManager({ socket, onSessionJoin }) {
           />
           <button
             onClick={handleJoin}
-            disabled={loading}
+            disabled={loading || !ready}
             className="btn btn-secondary"
             aria-label="Join the session with the provided ID"
           >

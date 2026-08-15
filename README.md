@@ -18,12 +18,16 @@ npm install && npm run dev        # backend :3001, frontend :5173 — no .env ne
 
 | | Measured | Receipt |
 |---|---|---|
-| End-to-end sync, p50 | **7 ms** LAN · 8 ms loopback, n=30 | [`benchmarks/sync-latency.cjs`](benchmarks/sync-latency.cjs) |
+| End-to-end sync, p50 | **299 ms** deployed · 7 ms LAN · 8 ms loopback, n=30 each | [`benchmarks/sync-latency.cjs`](benchmarks/sync-latency.cjs) |
+| Two browsers drawing together, against the live deployment | **15/15** checks | [`benchmarks/two-window.cjs`](benchmarks/two-window.cjs) |
 | The board survives a real `pkill` | **1,670 px** of ink restored into a browser with an empty cache | [`benchmarks/persistence.cjs`](benchmarks/persistence.cjs) |
 | Tests | **95**, green on GitHub | [ci.yml](.github/workflows/ci.yml) |
 | Client events emitted into the void | **0**, down from 13 | [API.md](API.md) |
 
-There is **no live URL** — nothing is deployed yet. See [Status](#status).
+**Live: [collab-frontend-omega.vercel.app](https://collab-frontend-omega.vercel.app)** — a static
+frontend on Vercel talking to an always-on Node process on Fly.io (London), because a
+collaborative session is a long-lived WebSocket and serverless cannot hold one. See
+[Status](#status) for what the free-trial tier costs you in latency.
 
 [![CI](https://github.com/br9704/collab-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/br9704/collab-dashboard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -160,11 +164,20 @@ says nothing about the product.
 |---|---|---|---|---|
 | Loopback | **8 ms** | 9 ms | 9 ms | 30 |
 | LAN over Wi-Fi | **7 ms** | 16 ms | 17 ms | 30 |
+| Deployed (Vercel edge → Fly `lhr`) | **299 ms** | 382 ms | 382 ms | 30 |
 
-> **Both browsers run on one machine.** The LAN row exercises the real network stack rather than
-> the loopback interface, but it is not two physical devices, and nothing is deployed, so there is
-> no internet figure. Over a real connection the number will be dominated by round-trip time to
-> the server. It will be measured when there is something to measure — not estimated first.
+> **Both browsers still run on one machine**, including for the deployed row — that row crosses
+> the real internet to London and back, but it is not two people in two cities.
+>
+> **The 299 ms is a trial-tier figure, and most of it is not the network.** TCP connect to the Fly
+> host is 24 ms and the TLS handshake 54 ms, yet a bare `GET /health` takes ~340 ms: roughly 285 ms
+> of that is the server, on a Fly trial machine that also stops itself every five minutes. The
+> product's own sync cost is the 7–8 ms measured locally; the rest is the hosting tier. It is
+> published as measured rather than adjusted, and it should be re-measured on a paid machine.
+>
+> This retires a claim rather than confirming one: an older portfolio line said **"50–80 ms sync"**.
+> Nothing here has ever supported it — locally it is far faster, deployed it is far slower — so it
+> is withdrawn instead of being quietly kept.
 
 Method, and a fuller list of what these numbers do not say, in
 [`benchmarks/README.md`](benchmarks/README.md). Reproduce with `node benchmarks/sync-latency.cjs`.
@@ -227,8 +240,8 @@ every board.
 
 | Limit | Detail |
 |---|---|
-| **Not deployed** | No live URL and no internet latency figure. The runbook is written ([docs/RELEASE.md](docs/RELEASE.md)); it needs the owner's hosting accounts |
-| **Measured on one machine** | Every figure above has both browsers on the same laptop |
+| **Hosted on a free trial** | The Fly machine stops itself after five minutes' idle and is throttled, which is most of the 299 ms. First load after an idle period pays a restart |
+| **Measured on one machine** | Every figure above has both browsers on the same laptop, including the deployed row |
 | **One process only** | Documents live in the memory of the process serving them; horizontal scaling needs Redis pub/sub and Postgres, and running two machines today would let boards silently diverge |
 | **No authentication** | The client id identifies a *browser*, not a person. Anyone with a session id can open that board as a viewer |
 | **Offline caches the document, not the app shell** | There is no service worker, so reloading the page while offline still fails at the network |
@@ -242,16 +255,25 @@ completion, the design and motion system, tests and CI, deploy readiness, the de
 owner-gated work. CI is green on GitHub.
 
 The bar this project set itself was *two people on different machines open a URL and draw
-together, and the state survives a server restart*. Half of that is met and verified — the state
-survives an actual process kill, and two people do draw together, including over a LAN against a
-non-localhost backend with only environment variables changed. The other half is not: nothing is
-deployed, so there is no URL and no two-machine measurement.
+together, and the state survives a server restart*. **There is now a URL**, and the full
+fifteen-check two-window gate passes against it: two browsers join the same board over the public
+internet, presence counts both, a stroke drawn in one appears in the other, and undo removes it
+from both. State survives an actual process kill. What is still not met is *different machines* —
+both browsers in every measurement run on one laptop.
 
-Three items remain, each with its exact command in [docs/RELEASE.md](docs/RELEASE.md): deploy the
-backend to Fly, deploy the frontend to Vercel, and measure sync latency against the deployment.
-Until that last one produces a number, the "50–80 ms sync" line in my portfolio copy stays
-unpublished — it is not contradicted by anything measured here, it is simply about a deployment
-that does not exist.
+Deploying immediately found a bug that nine sprints of local work could not, which is the argument
+for deploying. **New Session** was clickable before the socket had connected. On localhost that
+window is a few milliseconds; over the internet it is a second, and a click inside it set
+*"Not connected to server"* and did nothing, on a button that looked ready. The buttons now wait
+for the connection rather than for the socket object to exist.
+
+The "50–80 ms sync" portfolio line is **withdrawn**, not deferred. It was unbacked before; it is
+contradicted now. Locally the number is 7–8 ms, deployed it is 299 ms, and no measurement anywhere
+in this repository has ever produced 50–80 ms.
+
+What is left is a hosting decision, not engineering: the Fly machine is on a free trial that stops
+after five minutes' idle and throttles the CPU, which is where most of the 299 ms goes. A paid
+machine and a re-measurement would replace that figure.
 
 ## License · Author
 

@@ -1128,3 +1128,66 @@ Worth stating plainly: **every SHA in this file that predates 2026-08-15 refers 
 history and no longer resolves.** That is the cost of the fix, it was known before it was
 chosen, and it is the second time this repository has paid it — because the first rewrite
 addressed authorship without noticing that the same pass could have addressed content.
+
+---
+
+## Deploy — 2026-08-15 ✅ CLOSED
+
+The three `[⏭]` items from Sprint 8 are no longer deferred. Bruno supplied a Fly token and
+authorised the spend and the publish; both halves are live.
+
+- **Backend:** `https://collab-dashboard-backend.fly.dev` — one machine, `lhr`, 1 GB encrypted
+  volume genuinely mounted (`df` inside the machine shows `/dev/vdc` on `/data`, holding
+  `collab.sqlite` plus its `-wal`/`-shm`, owned by `node`). The audit's worst-case reading of the
+  Dockerfile — `VOLUME` declared at line 25 *before* the `chown` at line 33, so the chown is
+  discarded and SQLite cannot open — did not materialise, because Fly mounts the volume with
+  `uid: 1000, gid: 1000` itself. Checked rather than assumed.
+- **Frontend:** `https://collab-frontend-omega.vercel.app`, built with `VITE_SOCKET_URL` pointing
+  at the Fly host. Verified the value is actually inlined in the shipped bundle.
+- **CORS is enforced in production**, not merely configured: the allowed origin gets the header
+  and `not-your-site.example` gets none.
+
+**`vercel.json` had never worked.** It carried a `comment` key inside the rewrite object; Vercel
+validates `vercel.json` against a schema whose `rewrites.items` sets `additionalProperties: false`,
+so the very first deploy failed outright — as would every earlier attempt, had one been made. A
+runbook that has never been executed is a hypothesis, and this was the proof.
+
+**Deploying found a product bug that nine sprints of local work could not.** `SessionManager`
+received `socket` but never `connected`. A socket *object* exists the instant `io()` is called; it
+is not usable until it connects. Locally that gap is milliseconds and no one ever saw it. Over the
+internet it is about a second — and a click inside it hit `if (!socket)`, which was true-ish but
+useless, set *"Not connected to server"*, and did nothing, on a button that looked ready. Both
+buttons now gate on `connected` and the primary one reads "Connecting…" until it is. This is the
+same lesson as Sprint 7's zigzag: the environment you ship to reveals bugs the environment you
+develop in cannot.
+
+**Verification against the live deployment:** `two-window.cjs` with `APP_URL` pointed at Vercel —
+**15/15**, including `ONLINE (2)` in both windows, 788 px of the creator's stroke rendered in the
+joiner's window, a remote cursor positioned by transform, undo clearing both windows, and zero
+console errors and zero failed requests.
+
+**The measurement, and what it is honestly worth.** `sync-latency.cjs`, 30 samples, browser A
+commits a stroke → the element is present in browser B:
+
+| Environment | p50 | p95 | p99 | n |
+|---|---|---|---|---|
+| Deployed (Vercel edge → Fly `lhr`) | **299 ms** | 382 ms | 382 ms | 30 |
+
+Most of that is not the product and not the network. TCP connect to the Fly host is 24 ms and the
+TLS handshake 54 ms, yet a bare `GET /health` on a warm, `started` machine takes ~340 ms — roughly
+285 ms of server time on a trial-tier machine that Fly also stops every five minutes
+(`Trial machine stopping. To run for longer than 5m0s, add a credit card`). Published as measured,
+with the conditions stated, rather than adjusted downward or withheld.
+
+**The "50–80 ms sync" line is withdrawn, and that is the point.** It was unbacked through nine
+sprints. It is now *contradicted*: 7–8 ms locally, 299 ms deployed, and nothing in this repository
+has ever produced 50–80 ms. A number that survived that long unexamined is the exact failure this
+project was repaired to stop.
+
+**Deferred:**
+- **A paid Fly machine and a clean re-measurement.** The 299 ms figure describes the trial tier,
+  not the product. Bruno's call: it costs roughly $3–4/month.
+- **Two physically separate machines.** Still not met — every measurement here has both browser
+  contexts on one laptop, deployed row included. The ENGINEERPROMPT bar is closer, not cleared.
+- **A regression test for the connect-gating bug.** It needs a component-level harness
+  (`@testing-library/react`), which this project does not have; adding one is its own decision.

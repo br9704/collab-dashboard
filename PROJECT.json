@@ -3,13 +3,13 @@
   "slug": "collab-dashboard",
   "name": "COLLAB DASHBOARD",
   "oneLiner": "Collaborative whiteboard whose board survives a server restart and merges offline edits",
-  "status": "shipped",
+  "status": "live",
   "role": "SOLO BUILD",
   "year": "2026",
   "updated": "2026-08-15",
   "links": {
     "github": "https://github.com/br9704/collab-dashboard",
-    "live": null,
+    "live": "https://collab-frontend-omega.vercel.app",
     "npm": null,
     "huggingface": null,
     "appstore": null
@@ -29,6 +29,16 @@
     "playwright"
   ],
   "metrics": [
+    {
+      "value": "299 ms",
+      "label": "end-to-end sync, deployed (p50, n=30) — 7 ms on a LAN",
+      "source": "benchmarks/sync-latency.cjs"
+    },
+    {
+      "value": "15/15",
+      "label": "two-browser gate, run against the live deployment",
+      "source": "benchmarks/two-window.cjs"
+    },
     {
       "value": "7 ms",
       "label": "p50 end-to-end sync, stroke committed to element present elsewhere",
@@ -59,7 +69,7 @@
     "claim": "The board is a CRDT written to SQLite, so it survives an actual kill of the server process: 1,670 px of ink restored exactly, into a browser profile with an empty local cache, which means it could only have come from the server.",
     "source": "README.md#results-and-evidence"
   },
-  "honest": "Nothing is deployed: there is no live URL, no internet latency figure, and every measurement so far has both browsers on one machine. There is no authentication — the client id identifies a browser, not a person — and it runs as a single process, so horizontal scaling would need Redis pub/sub and Postgres.",
+  "honest": "Deployed and public, but hosted on a Fly free trial: the machine stops after five minutes' idle and is CPU-throttled, which is most of the 299 ms end-to-end sync figure — TCP connect to the host is 24 ms and the product's own sync cost is 7-8 ms measured locally. Both browsers in every measurement run on one laptop, so 'two people on different machines' is still unproven. There is no authentication: anyone with a session id can open that board. Offline caches the document but not the app shell. An older '50-80 ms sync' claim is withdrawn — nothing measured here has ever supported it.",
   "media": {
     "hero": "docs/media/hero.png",
     "demo": "docs/demo.gif",

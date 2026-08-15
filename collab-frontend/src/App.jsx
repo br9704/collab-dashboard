@@ -202,7 +202,9 @@ export default function App() {
   );
 
   if (!isJoined) {
-    return <SessionManager socket={socket} onSessionJoin={handleSessionJoin} />;
+    return (
+      <SessionManager socket={socket} connected={connected} onSessionJoin={handleSessionJoin} />
+    );
   }
 
   return (

@@ -2,7 +2,7 @@
 
 Everything in this file needs Bruno's accounts or his explicit go-ahead.
 
-**Steps 1 and 2 are DONE (2026-08-14). Steps 3 onward are not.** Each remaining step has
+**Steps 1-5 are DONE. The app is deployed and public (2026-08-15).** Each remaining step has
 been prepared and de-risked as far as it can be without those credentials, and what was
 verified is stated per step.
 
@@ -13,9 +13,8 @@ after pushing means force-pushing over a public branch someone may already have 
 
 ## 0. What is waiting  ·  DONE
 
-The sprint commits are on `main` **and pushed**. What remains is everything from step 3
-down: the deploy, the deployed-latency measurement, and the portfolio copy. The working
-whiteboard, the persistence, the tests and the demo are all public.
+Nothing. The commits are pushed, the app is deployed, and the latency has been measured.
+What remains is a hosting decision (a paid Fly machine) and the portfolio copy edit itself.
 
 ---
 
@@ -89,7 +88,7 @@ partly luck. The assertion now counts CRDT operations directly and passed 80/80.
 
 ---
 
-## 3. Deploy the backend  ·  Fly.io, free allowance
+## 3. Deploy the backend  ·  DONE 2026-08-15  ·  Fly.io, and it is NOT free
 
 Neither `flyctl` nor `vercel` is installed on this machine, so this is a fresh setup.
 
@@ -107,15 +106,23 @@ fly deploy
 curl https://<app>.fly.dev/health
 ```
 
-**Verified without Docker (2026-08-14):** a production-only dependency install
-(`npm install --omit=dev`) boots the server, honours `CORS_ORIGIN=*`, and the image's own
-`HEALTHCHECK` command exits 0 against `/health`. The Dockerfile itself has **not** been built
-— no Docker daemon on this machine — so a first `fly deploy` may still surface a build issue,
-most likely around `better-sqlite3`'s native module.
+**As executed:** live at `https://collab-dashboard-backend.fly.dev`, region `lhr`, one machine,
+1 GB encrypted volume. `better-sqlite3` did **not** cause trouble — `prebuild-install` found the
+linux-x64 prebuilt binary for Node 22's ABI, so nothing compiled.
+
+The volume was verified rather than assumed: `fly ssh console -C "df -h /data"` shows `/dev/vdc`
+mounted, holding `collab.sqlite` and its `-wal`/`-shm`, owned by `node`. Fly mounts volumes with
+`uid: 1000, gid: 1000`, which is why the Dockerfile's `VOLUME` line preceding its `chown` — a
+real ordering bug, since Docker discards directory changes made after `VOLUME` — did not bite.
+
+> **This costs money.** Fly's free allowance is gone. Without a card the machine stops itself
+> after five minutes idle (`Trial machine stopping…`) and is CPU-throttled — which is where most
+> of the measured 299 ms goes. A `shared-cpu-1x` 512 MB machine plus a 1 GB volume is roughly
+> $3-4/month.
 
 ---
 
-## 4. Deploy the frontend  ·  Vercel
+## 4. Deploy the frontend  ·  DONE 2026-08-15  ·  Vercel
 
 ```bash
 npm i -g vercel
@@ -131,9 +138,20 @@ Then close the loop, or the browser blocks every connection:
 fly secrets set CORS_ORIGIN=https://<project>.vercel.app
 ```
 
+**Two things this runbook did not warn about, both of which bit:**
+
+1. **`vercel.json` was invalid and always had been.** It carried a `comment` key inside the
+   rewrite object; Vercel validates against a schema with `additionalProperties: false` there,
+   so the deploy failed before building. A runbook never executed is a hypothesis.
+2. **Deployment Protection is on by default**, so the first successful deploy was reachable only
+   behind a Vercel SSO login. Turn it off in Project → Settings → Deployment Protection, or the
+   "live URL" is live only for you.
+
+Live at **`https://collab-frontend-omega.vercel.app`**.
+
 ---
 
-## 5. Verify the deployment
+## 5. Verify the deployment  ·  DONE 2026-08-15
 
 ```bash
 curl https://<app>.fly.dev/health
@@ -150,9 +168,15 @@ fly apps restart <app>
 
 Then the real two-window test, from two different machines if possible.
 
+**As executed:** `APP_URL=https://collab-frontend-omega.vercel.app node benchmarks/two-window.cjs`
+→ **15/15 against the live deployment**, including `ONLINE (2)` in both windows, 788 px of the
+creator's stroke rendered in the joiner's, undo clearing both, and zero console errors.
+
+Still *not* two different machines: both browser contexts run on one laptop.
+
 ---
 
-## 6. Measure deployed latency, and only then publish a number
+## 6. Measure deployed latency, and only then publish a number  ·  DONE 2026-08-15
 
 ```bash
 APP_URL=https://<project>.vercel.app LABEL="deployed (internet)" \
@@ -162,13 +186,19 @@ APP_URL=https://<project>.vercel.app LABEL="deployed (internet)" \
 Local figures today: **p50 8 ms loopback, 7 ms / p95 16 ms LAN** — both with two browsers on
 one machine.
 
-The portfolio's **"50–80 ms sync" is currently unbacked**. It is not contradicted by anything
-measured; it is about a deployment that does not exist. Once the command above produces a
-number, either the copy matches it or the copy changes.
+**Measured, 30 samples:** deployed **p50 299 ms, p95 382 ms, p99 382 ms**.
+
+Most of it is not the product. TCP connect to the Fly host is 24 ms and the TLS handshake 54 ms,
+yet a bare `GET /health` on a warm, `started` machine takes ~340 ms — about 285 ms of trial-tier
+server time. Re-measure on a paid machine before treating 299 ms as the product's number.
+
+The portfolio's **"50–80 ms sync" is now withdrawn, not deferred.** It was unbacked; it is now
+contradicted from both directions — 7-8 ms locally, 299 ms deployed. Nothing measured in this
+repository has ever produced 50-80 ms.
 
 ---
 
-## 7. Portfolio copy — proposed, not published
+## 7. Portfolio copy — ready to publish, with a real number
 
 Replace the current line with something the repository can defend:
 
@@ -176,7 +206,9 @@ Replace the current line with something the repository can defend:
 > in a CRDT (Yjs) synced over WebSockets and persisted to SQLite, so a board survives a server
 > restart and concurrent edits merge instead of overwriting each other. Roles are enforced at
 > the document connection rather than in the UI: a viewer's write is refused at the wire.
-> 95 tests; measured end-to-end sync of `[MEASURE ON DEPLOY]` p50.
+> 95 tests. End-to-end sync measured at **7 ms p50 on a LAN**; **299 ms p50** against the live
+> deployment, where most of the difference is a free-tier host, not the product.
 
-`[MEASURE ON DEPLOY]` stays a placeholder until step 6 produces a real figure. Publishing an
-estimate is the exact habit this repair set out to remove.
+The placeholder is gone because there is a real figure. Note that the honest version cites *both*
+numbers: quoting only the 7 ms would describe a LAN, and quoting only the 299 ms would describe
+Fly's trial tier. Neither alone is the product.
