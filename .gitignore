@@ -25,3 +25,12 @@ collab-backend/data/
 .claude/
 .codex/
 .cursor/
+
+# This is an npm workspace: the ONE lockfile at the root resolves both packages. The nested
+# ones were snapshots from before the Yjs migration — collab-frontend's still pinned the
+# removed `typescript` and knew nothing of `@hocuspocus/provider`, `yjs`, `y-indexeddb` or
+# `vitest`. Nothing reads them under workspaces, so nothing caught the drift; a Vercel build
+# rooted at collab-frontend would have installed a tree with no Yjs in it and failed on the
+# first import.
+collab-frontend/package-lock.json
+collab-backend/package-lock.json

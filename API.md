@@ -1,7 +1,8 @@
 # API Reference
 
-**Authoritative as of Sprint 3 (2026-08-14).** Every event below is implemented and verified
-end to end; there are no documented-but-missing events and no emitted-but-unhandled ones.
+**Authoritative as of Sprint 3 (2026-08-14); event contract re-checked and the Environment
+section corrected 2026-08-15.** Every event below is implemented and verified end to end;
+there are no documented-but-missing events and no emitted-but-unhandled ones.
 That was not true before — this file previously described `tool-change` as working when no
 handler existed, and omitted seven events that did.
 
@@ -192,10 +193,21 @@ Discovery: names the collaboration path and the health endpoint.
 
 ## Environment
 
+Backend:
+
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `3001` | HTTP + WebSocket port |
+| `HOST` | `0.0.0.0` | Bind address |
+| `CORS_ORIGIN` | localhost dev origins | Comma-separated allow-list, enforced on both the HTTP and socket.io surfaces |
 | `DATABASE_PATH` | `collab-backend/data/collab.sqlite` | SQLite file (documents + sessions) |
 
-`VITE_SOCKET_URL` and `CORS_ORIGIN` are **not implemented yet** — the URLs are still hardcoded
-to localhost. See `masterplan.md` Sprint 6.
+Frontend (build-time, Vite):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `VITE_SOCKET_URL` | `http://localhost:3001` | Backend origin |
+| `VITE_COLLAB_URL` | derived from `VITE_SOCKET_URL` | Yjs document endpoint; `http→ws`, `https→wss` |
+
+All of the above are implemented and were verified in Sprint 6 by running the whole stack on
+the LAN with only environment variables changed and no source edited. See `DEPLOYMENT.md`.

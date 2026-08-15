@@ -38,6 +38,11 @@ export function useSocket(url = DEFAULT_SOCKET_URL) {
         transports: ['websocket', 'polling']
       });
 
+      // `benchmarks/sync-latency.cjs` reports the socket round trip alongside the end-to-end
+      // number, precisely to keep the two apart. It reaches the socket through this handle.
+      // Dev builds only — it is not present in a production bundle.
+      if (import.meta.env.DEV) window.__socketForTest = socketRef.current;
+
       socketRef.current.on('connect', () => {
         console.log('[SOCKET] Connected:', socketRef.current.id);
         setConnected(true);

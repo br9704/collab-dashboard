@@ -2,6 +2,14 @@
   "name": "collab-frontend",
   "private": true,
   "version": "0.0.0",
+  "description": "React + Canvas client for Collab Dashboard — drawing surface, presence, and the Yjs document binding.",
+  "author": "Bruno Jaamaa <jaamaabruno@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/br9704/collab-dashboard.git",
+    "directory": "collab-frontend"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -110,7 +110,7 @@ export default function SmartShapes({ onShapeSelected, selectedShape }) {
 
       {/* Quick tips */}
       <div className="smart-shapes-tips">
-        <div className="tips-header">> Quick Tips</div>
+        <div className="tips-header">{'>'} Quick Tips</div>
         <ul className="tips-list">
           <li>Select a shape and click on canvas to create</li>
           <li>Connect shapes by dragging between them</li>

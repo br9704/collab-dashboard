@@ -2,7 +2,10 @@
 
 Every number in the project README is produced by something in this folder. That is the
 point: the repository previously carried a "50–80 ms sync" claim with nothing behind it, and
-fifteen test-report markdown files describing tests nobody had written.
+fourteen report markdown files — ten `TEST_REPORT_*` and four `VERIFICATION_REPORT_*` —
+describing tests nobody had written. (Counted at commit `6b52410`, the last commit before
+this work started. An earlier draft of this paragraph said fifteen, which was itself an
+unverified number in the paragraph about unverified numbers.)
 
 These are **not** part of `npm test`. They drive real browsers against a running stack, so
 they need Playwright and both services up:
@@ -26,10 +29,17 @@ every `npm install` for something only run by hand.
 | `features.cjs` | every control round-trips to a second window |
 | `motion.cjs` | MOTION.md's acceptance checklist, and the SIGNAL design rules |
 | `offline.cjs` | edits made offline reconcile without clobbering concurrent work |
-| `record-demo.cjs` | regenerates `docs/demo.gif` |
+| `record-demo.cjs` | records the demo take — see the note below |
 
-`APP_URL` overrides the frontend address, which is how the deploy-readiness gate was run
-against a non-localhost host.
+`APP_URL` overrides the frontend address in `two-window.cjs`, `sync-latency.cjs` and
+`record-demo.cjs` — those three, which is how the deploy-readiness gate was run against a
+non-localhost host. The other five (`persistence.cjs`, `features.cjs`, `motion.cjs`,
+`offline.cjs`, `crdt-permissions.cjs`) still hardcode `localhost:5173`/`localhost:3001` and
+can only be run locally.
+
+`record-demo.cjs` writes a `.webm` and prints its path. It does **not** produce
+`docs/demo.gif`: the webm→gif conversion was done by hand and no converter is committed, so
+the GIF is not currently reproducible from this repository alone.
 
 ---
 

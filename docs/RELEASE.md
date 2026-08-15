@@ -1,28 +1,27 @@
 # Release runbook — Sprint 8
 
-Everything in this file needs Bruno's accounts or his explicit go-ahead. Nothing here has
-been done. Each step has been prepared and de-risked as far as it can be without those
-credentials, and what was verified is stated per step.
+Everything in this file needs Bruno's accounts or his explicit go-ahead.
+
+**Steps 1 and 2 are DONE (2026-08-14). Steps 3 onward are not.** Each remaining step has
+been prepared and de-risked as far as it can be without those credentials, and what was
+verified is stated per step.
 
 Order matters: **authorship rewrite → push → deploy → measure → publish.** Rewriting history
 after pushing means force-pushing over a public branch someone may already have cloned.
 
 ---
 
-## 0. What is waiting
+## 0. What is waiting  ·  DONE
 
-```
-8 sprint commits, on main, never pushed.
-```
-
-The remote is still at the pre-repair state. Everything below — the working whiteboard, the
-persistence, the tests, the demo — exists only on this machine.
+The sprint commits are on `main` **and pushed**. What remains is everything from step 3
+down: the deploy, the deployed-latency measurement, and the portfolio copy. The working
+whiteboard, the persistence, the tests and the demo are all public.
 
 ---
 
-## 1. Rewrite authorship  ·  irreversible once pushed
+## 1. Rewrite authorship  ·  DONE 2026-08-14  ·  irreversible once pushed
 
-Current history:
+History before the rewrite:
 
 | Author | Commits |
 |---|---|
@@ -30,9 +29,18 @@ Current history:
 | `Claude Code <claude@code.local>` | 13 |
 | `Bruno Jaamaa <jaamaabruno@gmail.com>` | 8 |
 
-**Verified on a throwaway clone (2026-08-14):** the rewrite reattributes all 53 commits,
-preserves the commit count and every author date, and leaves the working tree
-**byte-identical** (same tree hash, `96c7ffd`).
+**Verified on a throwaway clone first (2026-08-14):** the rewrite reattributes all 53 commits
+as of that check, preserves the commit count and every author date, and leaves the working
+tree **byte-identical** (same tree hash, `96c7ffd`).
+
+**As executed:** 54/54 commits reattributed to `Bruno Jaamaa <jaamaabruno@gmail.com>`, author
+dates preserved, working tree byte-identical, `6248294 → f4fac6f`. Two history bundles were
+taken first, because `git filter-repo` rewrites the backup branch too.
+
+> A **second** rewrite ran on 2026-08-15 to strip `.claude/`, `.codex/` and `.cursor/` from
+> the whole history. Deleting them at HEAD in `f4fac6f` did not unpublish them — the blobs
+> stayed reachable from `origin/main` in eight commits, exposing the absolute path layout of
+> an unrelated private project. No credential was ever committed. See step 2's note.
 
 ```bash
 # Back the current state up first. This is the only undo.
@@ -44,7 +52,7 @@ Bruno Jaamaa <jaamaabruno@gmail.com> Claude Code <claude@code.local>
 EOF
 
 git filter-repo --force --mailmap /tmp/mailmap
-git log --format='%an <%ae>' | sort | uniq -c    # expect one author, 53 commits
+git log --format='%an <%ae>' | sort | uniq -c    # expect one author
 ```
 
 `git filter-repo` removes the `origin` remote by design, to stop an accidental push mid-rewrite:
@@ -59,7 +67,7 @@ git remote add origin https://github.com/br9704/collab-dashboard.git
 
 ---
 
-## 2. Push
+## 2. Push  ·  DONE 2026-08-14
 
 ```bash
 git push --force-with-lease origin main
@@ -69,9 +77,15 @@ git push --force-with-lease origin main
 fetch, which is the difference between overwriting your own history and overwriting
 someone else's.
 
-**CI runs for the first time on this push.** `.github/workflows/ci.yml` has been verified by
-executing each step locally; it has never run on GitHub, because nothing has ever been pushed.
-Expect to fix something — a first CI run that goes green on the first attempt is the exception.
+**CI ran for the first time on this push, and passed on the first attempt** — both jobs
+(`build + test`, `end-to-end smoke`), which the note here had said would be the exception.
+Two runs on `main` to date, both `success`.
+
+One caveat found later and fixed on 2026-08-15: `collab-frontend/src/collab/doc.test.js`
+carried an assertion that compared *encoded state-vector byte lengths* across two independent
+`Y.Doc`s. That length is dominated by the width of the doc's random clientID varint, so it
+failed roughly 8% of runs (measured: 14 failures in 180). Green CI up to that point was
+partly luck. The assertion now counts CRDT operations directly and passed 80/80.
 
 ---
 

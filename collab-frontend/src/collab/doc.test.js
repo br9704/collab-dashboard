@@ -58,6 +58,10 @@ function merge(a, b) {
   Y.applyUpdate(b, ua);
 }
 
+/** Total CRDT operations in a doc: the state vector's clock, summed over every client. */
+const opCount = (doc) =>
+  [...Y.decodeStateVector(Y.encodeStateVector(doc)).values()].reduce((a, b) => a + b, 0);
+
 describe('rule 1 — a stroke is ONE operation, not one per point', () => {
   it('produces a single map entry no matter how many points it has', () => {
     const doc = new Y.Doc();
@@ -80,9 +84,11 @@ describe('rule 1 — a stroke is ONE operation, not one per point', () => {
       points: Array.from({ length: 500 }, (_, i) => ({ x: i, y: i })), color: '#fff', width: 2,
     });
 
-    const smallOps = Y.encodeStateVector(small).length;
-    const bigOps = Y.encodeStateVector(big).length;
-    expect(bigOps).toBe(smallOps);
+    // Count operations, not encoded bytes. A state vector's *length* is dominated by the
+    // width of the doc's randomly-assigned clientID varint, so comparing lengths across two
+    // independent docs fails ~8% of the time for reasons unrelated to op count. The clock a
+    // state vector carries per client IS the op count, so decode it and compare that.
+    expect(opCount(big)).toBe(opCount(small));
   });
 });
 

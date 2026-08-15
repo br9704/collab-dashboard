@@ -84,8 +84,8 @@ const check = (name, pass, detail) => {
   await A.mouse.up();
   await A.waitForTimeout(600);
 
-  const strokesB = await B.evaluate(() => window.__strokeCountForTest ?? -1);
-  // Fall back to a pixel check: is there any non-white ink on B's canvas?
+  // A pixel check, not a count: is there any non-background ink on B's canvas? This reads the
+  // rendered result rather than any test-only hook, so it cannot pass on a stale global.
   const inkOnB = await B.evaluate(() => {
     const c = document.querySelector('.drawing-canvas');
     const ctx = c.getContext('2d');
