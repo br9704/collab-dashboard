@@ -855,7 +855,7 @@ reason rather than left ambiguous.
       - `.mcp.json` (which holds an auth token) was already gitignored — confirmed, not assumed
       - `.claude/`, `.codex/`, `.cursor/` **were** tracked. Per-checkout agent wiring, full of
         absolute paths to one machine. Untracked and gitignored.
-      - `benchmarks/persistence.cjs` hardcoded `/Users/brunojaamaa/...`, so it could only ever
+      - `benchmarks/persistence.cjs` hardcoded an absolute home-directory path, so it could only ever
         have run on this laptop. Derived from `__dirname` now, re-verified 9/9.
       - scanned the index for token-shaped strings: none
 - [⏭] **Deploy to Fly + Vercel — Bruno runs it.** Asked directly; he chose the runbook. Neither
@@ -1112,8 +1112,17 @@ git filter-repo --invert-paths --path .claude --path .codex --path .cursor --for
 Result: **57 commits preserved, one author, working tree byte-identical** — the tree hash is
 `699395b` both before and after, which is the check that matters, since the point was to change
 history without changing the checkout. `git log --all --name-only` now returns no path under
-`.claude/`, `.codex/` or `.cursor/`, and `git grep` over every reachable commit finds no
-`Desktop/hive`. Pushed `b7b7fe4 → 258013e` with `--force-with-lease`.
+`.claude/`, `.codex/` or `.cursor/`. Pushed `b7b7fe4 → 258013e` with `--force-with-lease`.
+
+**A correction to the paragraph above, caught by the pre-public audit.** An earlier draft of it
+claimed `git grep` over every reachable commit finds no reference to the private-project path —
+and the sentence making that claim contained the string, so it was its own counterexample. Two
+things are true and worth separating. The **agent-config files** are gone from history, which was
+the point. But `filter-repo --invert-paths` removes *paths*, never *content*: a home-directory
+string written into a source file survives in whatever commit introduced it. One such string
+remains in history, in a superseded revision of `benchmarks/persistence.cjs`, which was fixed at
+HEAD in Sprint 8. It is a benchmark's working directory, not a secret, and a third rewrite to
+chase it would cost every SHA again for no security gain. Recorded rather than repaired.
 
 Worth stating plainly: **every SHA in this file that predates 2026-08-15 refers to the old
 history and no longer resolves.** That is the cost of the fix, it was known before it was

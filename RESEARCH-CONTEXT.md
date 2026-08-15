@@ -65,7 +65,10 @@ The one deploy-friendly thing present: the backend correctly reads `process.env.
 ## 3. The credibility gaps
 
 1. **All state is in memory** — `const sessions = new Map()` at `server.js:30`. Every session, stroke, comment and role is lost on restart, and it cannot scale past one process. **Yet the boot log and docs headline "Persistence."** This is the single biggest gap in the repo: "real-time collaborative whiteboard" that forgets everything on redeploy.
-2. **Zero tests**, against **11 `TEST_REPORT_*.md` and 4 `VERIFICATION_REPORT_*.md`** files (40 markdown files total).
+2. **Zero tests**, against **10 `TEST_REPORT_*.md` and 4 `VERIFICATION_REPORT_*.md`** files (40 markdown files total).
+   *(Corrected 2026-08-15: this audit originally said 11. Recounted against the pre-repair tree
+   itself — `git ls-tree -r --name-only 6b52410 | grep -c TEST_REPORT` — it is 10, so 14 report
+   files, not 15. See `masterplan.md`.)*
 3. **"AI shape completion"** is geometric heuristics. Legitimate engineering — but the "AI" framing will not survive an interview question, and it's *more* impressive described honestly as shape recognition than as fake AI.
 4. **TypeScript 5.9 is a devDependency with not one `.ts`/`.tsx` file.** `tsconfig.json` is dead config.
 5. **No LICENSE** despite the MIT badge in the README. Backend `package.json`: `license: "ISC"` (npm default, contradicts the README), `main: "index.js"` (the entry is `server.js`), and empty `description`/`author`/`keywords`.
@@ -102,4 +105,6 @@ Research Yjs's cost against the current model before deciding. A middle path exi
 
 Of Bruno's three GitHub-only repos, this one needs the most engineering to become a net positive. gitpulse is finished and one publish away; the 3D visualizer needs a deploy and a screenshot. This one needs deployability, persistence, tests, doc purging, and authorship rewriting before it helps rather than hurts.
 
-**Worth asking Bruno directly whether to invest here or archive it** and put the time into RIPPLE's AI sprint or shipping UniSpace. There is an honest case either way — but it should be a decision, not a default.
+**Worth asking the owner directly whether to invest here or archive it.** There is an honest case either way — but it should be a decision, not a default.
+
+*Resolved (Aug 2026): fix it, not archive it. Nine sprints followed; `masterplan.md` is the record.*

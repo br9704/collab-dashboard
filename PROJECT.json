@@ -66,7 +66,7 @@
     "diagram": null
   },
   "built": {
-    "audit": "Run rather than read, the product did not work: the creator of a board was assigned the VIEWER role and could not draw on it, presence read ONLINE (0), and all state was an in-memory Map deleted when the last user left — under a boot banner headlining \"Persistence\", with 40 markdown files including 15 test reports against zero tests.",
+    "audit": "Run rather than read, the product did not work: the creator of a board was assigned the VIEWER role and could not draw on it, presence read ONLINE (0), and all state was an in-memory Map deleted when the last user left — under a boot banner headlining \"Persistence\", with 40 markdown files including 14 reports on testing against zero tests.",
     "repaired": [
       "The VIEWER-role and ONLINE(0) blockers were one race: the client subscribed after the server had already broadcast, while the acknowledgement it did receive already carried the correct state and was being discarded.",
       "cursor-move was never emitted by the application at all, so remote cursors could not have worked.",

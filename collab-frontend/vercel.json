@@ -6,7 +6,6 @@
   "installCommand": "npm install",
   "rewrites": [
     {
-      "comment": "Single-page app: every path serves index.html so a deep link does not 404.",
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

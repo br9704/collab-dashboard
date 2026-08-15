@@ -34,3 +34,9 @@ collab-backend/data/
 # first import.
 collab-frontend/package-lock.json
 collab-backend/package-lock.json
+
+# Internal kickoff prompts and duplicated agent instructions. Not project documentation:
+# the masterplan is the public record of how this was built.
+ENGINEERPROMPT.md
+DOCS-ENGINEERPROMPT.md
+GEMINI.md

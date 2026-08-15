@@ -146,8 +146,8 @@ reason, is in [masterplan.md](masterplan.md).
 
 **Provenance:** most of this repository was written by coding agents under my direction. The
 commit history was reattributed to a single author in Sprint 8 with author dates preserved and the
-working tree byte-identical before and after; `git log` now shows one author across all 55
-commits.
+working tree byte-identical before and after; `git log` now shows a single author across the
+entire history.
 
 ## Results and evidence
 
