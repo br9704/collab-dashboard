@@ -9,6 +9,21 @@
     "type": "git",
     "url": "https://github.com/br9704/collab-dashboard.git"
   },
+  "homepage": "https://github.com/br9704/collab-dashboard#readme",
+  "bugs": {
+    "url": "https://github.com/br9704/collab-dashboard/issues"
+  },
+  "keywords": [
+    "whiteboard",
+    "collaboration",
+    "real-time",
+    "crdt",
+    "yjs",
+    "websockets",
+    "socket.io",
+    "canvas",
+    "react"
+  ],
   "workspaces": [
     "collab-backend",
     "collab-frontend"

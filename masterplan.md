@@ -926,3 +926,176 @@ All nine sprints (0–8) closed. Every gate passed with recorded evidence.
 internet latency figure; it runs on one machine only; there is no authentication; offline
 caches the document but not the app shell; synchronised camera is published over Awareness
 with nothing consuming it. All five are in the README's *Known limits* table.
+
+---
+
+## Sprint D — Documentation ✅ CLOSED 2026-08-15
+
+**Intent:** the engineering is done and the receipts are in this file, but the repo has no front
+door. Run `DOCS-ENGINEERPROMPT.md`: restructure the README so a stranger sees a picture and a
+number above the fold, understands the architecture from one diagram, and can find the artifact
+behind every claim — and produce the machine-readable `PROJECT.json` the portfolio renders from.
+No source changes; this sprint is documentation and repo metadata.
+
+**Owner answers (Phase 2, asked before any writing):** nothing is deployed yet, so the demo GIF
+leads and *not deployed* stays first in the limits table · **nothing held back** — the latency
+table, the seven bugs and the authorship rewrite all appear · fix the GitHub repo card directly ·
+no case study, so `PROJECT.json` links to GitHub only.
+
+- [x] Re-measure every number this pass intends to publish rather than inheriting it.
+- [x] Rewrite `README.md` to the prescribed order: hook → demo → run command → headline results
+      → badges → what it does (prose) → architecture (**Mermaid**) → **how it was built** →
+      results and evidence → usage with captured output → limitations → status → licence/author.
+- [x] `PROJECT.json` at the repo root, schema-exact, every `metrics[].source` and
+      `headline.source` pointing at a file that exists.
+- [x] `docs/media/hero.png` — a real frame lifted from `docs/demo.gif` at 18 s (ffmpeg), showing
+      `ONLINE (2)`, a remote cursor with its name chip, a snapped circle and a zigzag left as
+      drawn. Not a mockup. `docs/demo.gif` stays at its existing path, which this file, `CLAUDE.md`
+      and `benchmarks/record-demo.cjs` all reference.
+- [x] Repo hygiene: root `package.json` gains `homepage`, `bugs`, `keywords`; GitHub description
+      and topics corrected; two dead tracked files deleted (below).
+- [x] `share_intent` before any writing; `record_verification` at the gate.
+
+**Gate:** every number in the README traces to a committed artifact that says the same thing ·
+`PROJECT.json` validates and every source path exists · Mermaid renders on GitHub · every badge
+and image resolves · tests and build still green.
+
+**Verification — PASSED 2026-08-15.** 70 scripted checks green (`verify-docs.cjs`, written for
+this gate), plus four checks run by hand.
+
+```
+PROJECT.json          parses · 17 required keys · oneLiner 87/90 chars · status legal
+                      · honest non-empty · 5/5 metric sources exist · headline source exists
+                      · media paths exist or are explicitly null
+README                20/20 local links resolve · image resolves · mermaid present
+                      · zero emoji · none of blazing/seamless/powerful/robust
+Numbers               8 ms / 7 ms / 16 ms / 17 ms / n=30 all match benchmarks/README.md
+                      · 1,670 px, 46-corners-on-48-points, six-bugs-plus-a-seventh,
+                        ORPHANED: 0 all match this file
+                      · shapeRecognition.js = 588 lines · server.js = 8 socket handlers
+```
+
+By hand: GitHub's own renderer (`POST /markdown`) returns the mermaid block as
+`data-type="mermaid"`, so it renders as a diagram rather than a code fence · all three badge URLs
+return `image/svg+xml` 200 and the CI badge reads **passing** · `npm test` **95/95** after the
+deletions · `npm run build` exit 0, 22.20 kB CSS / 443.10 kB JS.
+
+**As-shipped delta:**
+- **Correction to this file's own measured baseline.** Correction #2 (line 42) states "there is
+  **no `tsconfig.json` anywhere** in the repo". That is wrong: `collab-frontend/tsconfig.json`
+  existed and was tracked, with `strict: true` and `include: ["src"]`, against zero `.ts` files
+  and no `typescript` dependency (D6 removed it) and nothing that runs `tsc`. `CLAUDE.md` locks
+  "do not leave it ambiguous" → **deleted**. Recorded here rather than edited above, per the
+  never-rewrite rule.
+- **Second correction to the measured baseline: the test-report count was 14, not 15.** Both this
+  file's baseline table and `RESEARCH-CONTEXT.md` record "11 `TEST_REPORT_*` / 4
+  `VERIFICATION_REPORT_*`". Counted against the pre-repair tree itself —
+  `git ls-tree -r --name-only 6b52410 | grep -c TEST_REPORT` — it is **10 and 4**, so 14 report
+  files among 40 markdown files. The README says 14 and names the split. Caught while re-deriving
+  the figure for publication rather than restating it, which is the entire point of the rule.
+- **A second tracked process artifact survived Sprint 0's purge**: `REDESIGN_SUMMARY.txt`, an
+  ASCII-boxed "EXPERT AUDIT + REDESIGN COMPLETION SUMMARY". It was missed because that purge
+  counted `.md` files and this one is `.txt`. Deleted.
+- **The GitHub repo card was contradicting the code in public**, which nothing in this repo could
+  have caught: the description read "Real-time collaborative **project management dashboard** —
+  React, Node.js, WebSockets, **TypeScript** … drag-and-drop", with topics including `typescript`
+  and `tailwindcss`. Neither is used; it is a whiteboard, not a project-management dashboard.
+  Description and topics rewritten with `gh repo edit`, and both are now also carried in
+  `PROJECT.json` under `github`, so there is one source for them.
+- **`PROJECT.json.media.diagram` is `null` on purpose.** The architecture diagram is Mermaid in
+  the README; inventing an `architecture.svg` to fill the field would be the exact habit this
+  repository was repaired to remove.
+- The README's socket description changed on re-measurement: `server.js` now has **8** handlers,
+  not the 16 of the audit baseline, because Sprint 2 moved every document operation onto the
+  Y.Doc. socket.io is a control plane now, and the architecture section says so.
+- **Three of the gate's own checks failed first, and all three were bugs in the checker**, not in
+  the docs: this file hard-wraps at 90 columns so claims must be matched on normalised whitespace;
+  "seven bugs" is recorded as six enumerated plus a seventh that fixing (6) exposed; and
+  `split('\n').length` is one more than `wc -l` on a file with a trailing newline. Worth writing
+  down — a verification script that is wrong in the lenient direction would have passed silently.
+
+**Deferred:**
+- **Nothing was committed to the portfolio itself.** `PROJECT.json` is the deliverable it reads;
+  wiring it in belongs to the portfolio prompt, which runs after this one.
+- `collab-frontend/src/collab/doc.test.js` carries an uncommitted flaky-test fix from a concurrent
+  session (state-vector *byte length* versus decoded op count). Left unstaged and out of this
+  sprint's commit — it is someone else's change to land.
+
+---
+
+## Verification sweep + defect repair — 2026-08-15 (post-Sprint D) ✅ CLOSED
+
+Not a planned sprint. A full independent re-verification of the closed work, run because a
+session ended mid-flight and "all sprints closed" had not been re-tested since. Six parallel
+auditors: masterplan closure, test/build execution, the benchmark harnesses, an honesty pass
+over every public claim, a publication-hygiene pass, and a docs-brief gap analysis.
+
+**What held up.** All eight harnesses executed: **64/64 checks green**, 6/6 harnesses exit 0 —
+`crdt-permissions` 9/9 (the viewer's write rejected server-side, both forged tokens denied),
+`two-window` 15/15, `features` 11/11, `motion` 12/12, `offline` 8/8, `persistence` 9/9 with the
+server genuinely killed and 1,409 px restored into a fresh profile. `npm test` 32 + 63 = **95**.
+Build green, CSS **22.20 kB**. Every `[⏭]` still correctly deferred. The Known-limits table is
+accurate in both directions — no limit had been silently fixed.
+
+**What did not.**
+
+- **A test was flaky at ~8% and nobody knew.** `collab-frontend/src/collab/doc.test.js`
+  compared `Y.encodeStateVector(doc).length` across two independent `Y.Doc`s. That byte length
+  is dominated by the width of the doc's *random* clientID varint, not by op count: 14 failures
+  in 180 runs measured, and 20,000 fresh docs give 7 bytes 93.6% / 6 bytes 6.3%. So the
+  assertion never measured what its name claimed, and **green CI was partly luck** — which
+  explains the alternating pass/fail verification records in the room. Now decodes the state
+  vector and sums the per-client clock, which *is* the op count. 80/80 runs green after.
+- **Sprint 8's pre-publication fix did not do what it claimed.** Deleting `.claude/`, `.codex/`
+  and `.cursor/` at HEAD in `f4fac6f` left the blobs reachable from `origin/main` in eight
+  commits — `git filter-repo` had rewritten *authorship*, not content. They exposed the absolute
+  path layout of an unrelated private project. No credential was ever committed; `.mcp.json` and
+  `opencode.json` were correctly never tracked. Corrected by a second rewrite, with consent.
+- **`API.md` contradicted `DEPLOYMENT.md`** on the repository's headline deployability claim: it
+  said `VITE_SOCKET_URL` and `CORS_ORIGIN` were "not implemented yet — URLs still hardcoded to
+  localhost". Both have been implemented since Sprint 6. The env table also omitted four of the
+  six real variables.
+- **`docs/RELEASE.md` opened with "Nothing here has been done"** while steps 1–2 were done, and
+  cited 53 commits and a three-author table against an actual 55 commits under one author.
+- **Two stale nested lockfiles would have broken step one of the deploy runbook.**
+  `collab-frontend/package-lock.json` still pinned the removed `typescript` and knew nothing of
+  `@hocuspocus/provider`, `yjs`, `y-indexeddb` or `vitest`; `vercel.json` sets
+  `installCommand: npm install`, so a Vercel build rooted there installs a tree with no Yjs and
+  fails on the first import. Nothing reads them under npm workspaces, so nothing caught the drift.
+- **`better-sqlite3` was required but declared nowhere** (`collab-backend/store.js:21`),
+  resolving only by hoist from `@hocuspocus/extension-sqlite`. Green by luck of the tree shape.
+- **Two test hooks were dead.** `window.__socketForTest` and `window.__strokeCountForTest` exist
+  in no source file, so `sync-latency.cjs`'s socket-RTT line — the transport-versus-end-to-end
+  distinction this repository keeps insisting on — **silently never printed**. The socket handle
+  is now exposed in dev builds; the unused stroke-count read is gone.
+- **`record-demo.cjs` does not produce `docs/demo.gif`.** It writes a `.webm`; the conversion was
+  done by hand and no converter is committed. Both `README.md` and `benchmarks/README.md` said
+  otherwise. The GIF is genuine, but it is not reproducible from this repository alone.
+- **`APP_URL` is honoured by three of eight harnesses**, not all of them. Five hardcode
+  `localhost` and can only run locally — so Sprint 6's LAN evidence covers `two-window` only.
+
+**Corrections to claims recorded earlier in this file — the entries above stand as written;
+these are the amendments:**
+
+1. **`sprint1-protocol.cjs` does not exist and never did.** Sprint 1's "14/14 at protocol level"
+   cites it; `git log --all --name-only` across the entire history has no path matching it. It
+   was a scratch file, never committed. The 14 assertions are listed in prose but nothing in the
+   repository emits them. `crdt-permissions.cjs` is the only wire-level harness and emits 9. By
+   this project's own honesty rule that number is **unbacked** — the same defect class as the
+   "50–80 ms sync" line it was written to avoid.
+2. **"fifteen test-report markdown files" is fourteen** — ten `TEST_REPORT_*` plus four
+   `VERIFICATION_REPORT_*` at commit `6b52410`. An unverified number inside the paragraph about
+   unverified numbers, in both `benchmarks/README.md` and this file.
+3. Sprint 6's CORS evidence is a recorded `curl` observation, not a harness; Sprint 8's "CI
+   passed" is a GitHub Actions result. Both are fine — noting that neither is a `benchmarks/`
+   artifact, for anyone auditing that folder against the claims.
+
+**Deferred:**
+- **The 14/14 protocol claim is left standing but flagged, not deleted** — masterplan content is
+  never rewritten. Either a harness gets written that emits those 14 assertions, or the number
+  comes out of the current-state summary. Not done here because it is Sprint 1's gate, and
+  re-opening a closed gate needs a decision, not a patch.
+- `AGENTS.md` and `GEMINI.md` remain tracked and byte-identical. They carry no paths or secrets,
+  and publishing them may well be intentional, so they were left alone rather than guessed at.
+- The 8 npm advisories (3 high, all `ws` via `socket.io-adapter`) are untouched: the fix is an
+  upstream bump, not a local change.

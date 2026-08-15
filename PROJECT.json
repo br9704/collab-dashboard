@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "slug": "collab-dashboard",
+  "name": "COLLAB DASHBOARD",
+  "oneLiner": "Collaborative whiteboard whose board survives a server restart and merges offline edits",
+  "status": "shipped",
+  "role": "SOLO BUILD",
+  "year": "2026",
+  "updated": "2026-08-15",
+  "links": {
+    "github": "https://github.com/br9704/collab-dashboard",
+    "live": null,
+    "npm": null,
+    "huggingface": null,
+    "appstore": null
+  },
+  "stack": [
+    "javascript",
+    "react",
+    "vite",
+    "canvas",
+    "node",
+    "express",
+    "socket.io",
+    "yjs",
+    "hocuspocus",
+    "sqlite",
+    "vitest",
+    "playwright"
+  ],
+  "metrics": [
+    {
+      "value": "7 ms",
+      "label": "p50 end-to-end sync, stroke committed to element present elsewhere",
+      "source": "benchmarks/README.md"
+    },
+    {
+      "value": "1,670 px",
+      "label": "of ink restored after killing the server process",
+      "source": "benchmarks/persistence.cjs"
+    },
+    {
+      "value": "95",
+      "label": "tests, green in CI on every push",
+      "source": ".github/workflows/ci.yml"
+    },
+    {
+      "value": "7",
+      "label": "real bugs the first tests found",
+      "source": "masterplan.md"
+    },
+    {
+      "value": "0",
+      "label": "client events with no server handler, down from 13",
+      "source": "API.md"
+    }
+  ],
+  "headline": {
+    "claim": "The board is a CRDT written to SQLite, so it survives an actual kill of the server process: 1,670 px of ink restored exactly, into a browser profile with an empty local cache, which means it could only have come from the server.",
+    "source": "README.md#results-and-evidence"
+  },
+  "honest": "Nothing is deployed: there is no live URL, no internet latency figure, and every measurement so far has both browsers on one machine. There is no authentication — the client id identifies a browser, not a person — and it runs as a single process, so horizontal scaling would need Redis pub/sub and Postgres.",
+  "media": {
+    "hero": "docs/media/hero.png",
+    "demo": "docs/demo.gif",
+    "diagram": null
+  },
+  "built": {
+    "audit": "Run rather than read, the product did not work: the creator of a board was assigned the VIEWER role and could not draw on it, presence read ONLINE (0), and all state was an in-memory Map deleted when the last user left — under a boot banner headlining \"Persistence\", with 40 markdown files including 15 test reports against zero tests.",
+    "repaired": [
+      "The VIEWER-role and ONLINE(0) blockers were one race: the client subscribed after the server had already broadcast, while the acknowledgement it did receive already carried the correct state and was being discarded.",
+      "cursor-move was never emitted by the application at all, so remote cursors could not have worked.",
+      "The session id was truncated in the one place it was displayed, so nobody could ever join a board.",
+      "The canvas bitmap was sized from the window rather than its own box, so every stroke landed offset from the pointer; separately it measured 1440 px wide inside an 870 px visible area, so you could draw where you could not see.",
+      "State moved from an in-memory Map into a Yjs document persisted to SQLite, and the delete-the-session-when-empty branch was removed.",
+      "Thirteen client events that emitted into the void — layers, templates, smart shapes, text formatting, video embeds — got real handlers on the document.",
+      "Seven bugs found by writing the first tests, including corner detection so inverted that a 48-point rectangle scored 46 corners, which meant rectangle, triangle and diamond recognition could never fire on a hand-drawn stroke.",
+      "Recording the demo caught shape recognition silently replacing a hand-drawn zigzag with a straight line; straightness is now measured globally and auto-keep is gated at 0.85 confidence."
+    ],
+    "measured": [
+      "End-to-end sync latency, p50 8 ms loopback and 7 ms / p95 16 ms over LAN, n=30 — the time from committing a stroke to that element existing in another browser's document, not a socket ping.",
+      "Persistence proved by killing the server process and restoring 1,670 px of ink into a browser profile with an empty IndexedDB.",
+      "A viewer's write refused at the wire with no UI involved, plus two token forgeries rejected.",
+      "Remote cursor interpolation verified as time-based: convergence within 383/375/400 ms at 30/60/144 Hz.",
+      "Deployability verified on a LAN with only environment variables changed and no source edit."
+    ],
+    "decisions": [
+      {
+        "what": "Yjs + Hocuspocus over Redis or Postgres",
+        "why": "A CRDT answers persistence, conflict resolution and offline editing in one architectural move, and it is what production whiteboards use. The cost is modelling discipline — a stroke is one operation holding an immutable point array, never one operation per point."
+      },
+      {
+        "what": "Roles enforced at the document connection, never inside the CRDT",
+        "why": "Every client with document write access could otherwise edit its own role, and hiding the toolbar from a viewer is decoration when the shared type is writable."
+      },
+      {
+        "what": "Cursors and camera on Awareness, never in the document",
+        "why": "Presence answers who is here now; persisting it would restore ghosts. Progressive remote strokes ride the same channel so the pen and its line stay attached, while the document still takes one operation per finished stroke."
+      },
+      {
+        "what": "Exactly one machine, declared in fly.toml",
+        "why": "Hocuspocus keeps each document in the memory of the process serving it. Two machines would each hold their own copy of the same board and neither would see the other's edits — users would look connected and silently diverge, which is worse than an outage because nobody notices."
+      },
+      {
+        "what": "\"AI shape completion\" renamed to shape recognition",
+        "why": "It is 588 lines of geometric heuristics and never was machine learning. It is more interesting stated accurately, and the claim would not survive an interview question."
+      }
+    ]
+  },
+  "ownerGated": [
+    "deploy the backend to Fly.io, with the mounted volume",
+    "deploy the frontend to Vercel",
+    "measure sync latency against the deployment",
+    "replace the unbacked \"50-80 ms sync\" line in the portfolio copy with the measured number"
+  ],
+  "github": {
+    "description": "Real-time collaborative whiteboard. Yjs CRDT over WebSockets, persisted to SQLite: boards survive a server restart, offline edits converge, and roles are enforced at the document connection.",
+    "topics": [
+      "collaboration",
+      "whiteboard",
+      "real-time",
+      "crdt",
+      "yjs",
+      "websockets",
+      "socket-io",
+      "react",
+      "canvas",
+      "sqlite",
+      "nodejs",
+      "javascript"
+    ]
+  },
+  "masterplan": "masterplan.md"
+}

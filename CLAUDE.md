@@ -213,6 +213,20 @@ Still not true, all in the README's Known limits table: no live URL, no internet
 figure, one machine only, no authentication, offline caches the document but not the app
 shell, synchronised camera published but unconsumed.
 
+**Sprint D closed (2026-08-15) — the repo has a front door.** `README.md` rewritten to the
+documentation brief: the demo GIF and a four-row results table above the fold, a Mermaid
+architecture diagram, and a *How it was built* section that says what the audit found and what
+measurement changed. `PROJECT.json` at the root is the machine-readable card the portfolio reads —
+every `metrics[].source` points at a file that exists, and `honest` carries what is not true.
+70 scripted checks plus GitHub's own renderer; 95/95 tests and the build still green.
+
+Three things the pass turned up. The **GitHub repo card was lying in public** — description said
+"project management dashboard … TypeScript", topics included `typescript` and `tailwindcss`; fixed
+with `gh repo edit` and mirrored into `PROJECT.json`. **`collab-frontend/tsconfig.json` existed and
+was tracked**, contradicting this file's masterplan correction #2 — deleted, per the locked
+"do not leave it ambiguous". And `REDESIGN_SUMMARY.txt` survived Sprint 0's purge because that
+purge counted `.md` files.
+
 Keep-or-archive: **decided — fix it** (locked in ENGINEERPROMPT, Aug 2026).
 
 ## MOTION.md (binding)
