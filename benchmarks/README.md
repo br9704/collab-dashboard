@@ -30,6 +30,10 @@ every `npm install` for something only run by hand.
 | `motion.cjs` | MOTION.md's acceptance checklist, and the SIGNAL design rules |
 | `offline.cjs` | edits made offline reconcile without clobbering concurrent work |
 | `record-demo.cjs` | records the demo take — see the note below |
+| `verify-docs.cjs` | every number in the README still matches its artifact, and `PROJECT.json` validates |
+
+`verify-docs.cjs` is the odd one out: no browser, no running stack, nothing to start. Run it
+with `node benchmarks/verify-docs.cjs` after touching the README or `PROJECT.json`.
 
 `APP_URL` overrides the frontend address in `two-window.cjs`, `sync-latency.cjs` and
 `record-demo.cjs` — those three, which is how the deploy-readiness gate was run against a
