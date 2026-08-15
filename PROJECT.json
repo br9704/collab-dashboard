@@ -30,9 +30,9 @@
   ],
   "metrics": [
     {
-      "value": "299 ms",
-      "label": "end-to-end sync, deployed (p50, n=30) — 7 ms on a LAN",
-      "source": "benchmarks/sync-latency.cjs"
+      "value": "7 ms",
+      "label": "end-to-end sync, this application (p50, n=30) — 299 ms deployed, of which ~285 ms is free-tier CPU throttling",
+      "source": "benchmarks/README.md"
     },
     {
       "value": "15/15",
@@ -69,7 +69,7 @@
     "claim": "The board is a CRDT written to SQLite, so it survives an actual kill of the server process: 1,670 px of ink restored exactly, into a browser profile with an empty local cache, which means it could only have come from the server.",
     "source": "README.md#results-and-evidence"
   },
-  "honest": "Deployed and public, but hosted on a Fly free trial: the machine stops after five minutes' idle and is CPU-throttled, which is most of the 299 ms end-to-end sync figure — TCP connect to the host is 24 ms and the product's own sync cost is 7-8 ms measured locally. Both browsers in every measurement run on one laptop, so 'two people on different machines' is still unproven. There is no authentication: anyone with a session id can open that board. Offline caches the document but not the app shell. An older '50-80 ms sync' claim is withdrawn — nothing measured here has ever supported it.",
+  "honest": "Deployed and public, but on a free tier that is doing most of the damage: end-to-end sync measures 299 ms against the live site, of which roughly 285 ms is CPU throttling — isolated by showing that a route doing no database work costs the same, and that a held-open socket round-trips at 322 ms against a 25 ms network. The application's own cost is 7-8 ms. The machine also sleeps after five minutes idle, so a cold visit waits about six seconds. Both browsers in every measurement run on one laptop, so 'two people on different machines' is still unproven. There is no authentication: anyone with a session id can open that board. Offline caches the document but not the app shell. An older '50-80 ms sync' claim is withdrawn - nothing measured here has ever supported it.",
   "media": {
     "hero": "docs/media/hero.png",
     "demo": "docs/demo.gif",

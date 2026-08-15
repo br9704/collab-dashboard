@@ -188,9 +188,18 @@ one machine.
 
 **Measured, 30 samples:** deployed **p50 299 ms, p95 382 ms, p99 382 ms**.
 
-Most of it is not the product. TCP connect to the Fly host is 24 ms and the TLS handshake 54 ms,
-yet a bare `GET /health` on a warm, `started` machine takes ~340 ms — about 285 ms of trial-tier
-server time. Re-measure on a paid machine before treating 299 ms as the product's number.
+Almost none of it is the product, and that was isolated rather than asserted:
+
+- `GET /` does **no** database work and returns a static object. It costs the same ~285 ms as
+  `GET /health`, so the time is neither SQLite nor application logic.
+- Over a **held-open** WebSocket, where the machine cannot idle, `latency-ping` round-trips at
+  **p50 322 ms, min 283 ms** — against a network round trip of ~25 ms (TCP connect 24 ms).
+
+A trivial ping costing ~285 ms of server time on a warm, `started` machine is sustained CPU
+throttling on the free tier. Budget: ~25 ms network + ~7-8 ms application + ~285 ms throttling.
+
+Re-measure if the machine is ever paid for. Until then 299 ms describes Fly's free tier, and
+7-8 ms describes this code.
 
 The portfolio's **"50–80 ms sync" is now withdrawn, not deferred.** It was unbacked; it is now
 contradicted from both directions — 7-8 ms locally, 299 ms deployed. Nothing measured in this

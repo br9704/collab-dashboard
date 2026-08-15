@@ -24,6 +24,7 @@ export default function SessionManager({ socket, connected, onSessionJoin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef(null);
+  const [slowConnect, setSlowConnect] = useState(false);
 
   // Auto-focus the session input on mount
   useEffect(() => {
@@ -31,6 +32,15 @@ export default function SessionManager({ socket, connected, onSessionJoin }) {
   }, []);
 
   const ready = Boolean(socket && connected);
+
+  // The backend is one always-on process on a free tier that stops itself when idle, so the
+  // first visitor after a quiet spell waits for a machine to boot — measured at ~6 s. Six
+  // seconds of a silent "Connecting…" reads as broken. Say what is happening instead.
+  useEffect(() => {
+    if (ready) return setSlowConnect(false);
+    const t = setTimeout(() => setSlowConnect(true), 2500);
+    return () => clearTimeout(t);
+  }, [ready]);
 
   const handleCreate = () => {
     if (!ready) {
@@ -82,6 +92,13 @@ export default function SessionManager({ socket, connected, onSessionJoin }) {
         {error && (
           <div role="alert" className="error-message">
             {error}
+          </div>
+        )}
+
+        {!ready && slowConnect && (
+          <div role="status" className="error-message">
+            Waking the server — it sleeps after five minutes idle on the free tier. About six
+            seconds.
           </div>
         )}
 

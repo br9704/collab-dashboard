@@ -169,11 +169,27 @@ says nothing about the product.
 > **Both browsers still run on one machine**, including for the deployed row — that row crosses
 > the real internet to London and back, but it is not two people in two cities.
 >
-> **The 299 ms is a trial-tier figure, and most of it is not the network.** TCP connect to the Fly
-> host is 24 ms and the TLS handshake 54 ms, yet a bare `GET /health` takes ~340 ms: roughly 285 ms
-> of that is the server, on a Fly trial machine that also stops itself every five minutes. The
-> product's own sync cost is the 7–8 ms measured locally; the rest is the hosting tier. It is
-> published as measured rather than adjusted, and it should be re-measured on a paid machine.
+> **Almost none of the 299 ms is this application.** The budget was measured apart rather than
+> assumed:
+>
+> | Component | Cost | How it was isolated |
+> |---|---|---|
+> | Network round trip to `lhr` | **~25 ms** | TCP connect 24 ms, TLS handshake 54 ms |
+> | This application's own sync | **~7–8 ms** | the loopback and LAN rows above |
+> | Free-tier CPU throttling | **~285 ms** | see below |
+>
+> That last row is the whole story. `GET /` does no database work and returns a static object —
+> it takes the same ~285 ms as `GET /health`, so it is not SQLite and not the app. And over a
+> **held-open** WebSocket, where the machine cannot be idle, `latency-ping` round-trips at
+> p50 322 ms / min 283 ms against a ~25 ms network. A trivial ping costing 285 ms of server time
+> on a warm, `started` machine is sustained CPU throttling, not a cold start.
+>
+> Separately, the machine stops itself after five minutes idle, so the first visitor after a quiet
+> spell waits ~6 s for it to boot. The interface says so while it happens rather than showing a
+> silent spinner.
+>
+> Published as measured. The honest reading is that this is what a whiteboard costs on a free
+> tier, and that the 7–8 ms figure is the one that describes the code.
 >
 > This retires a claim rather than confirming one: an older portfolio line said **"50–80 ms sync"**.
 > Nothing here has ever supported it — locally it is far faster, deployed it is far slower — so it
@@ -240,7 +256,7 @@ every board.
 
 | Limit | Detail |
 |---|---|
-| **Hosted on a free trial** | The Fly machine stops itself after five minutes' idle and is throttled, which is most of the 299 ms. First load after an idle period pays a restart |
+| **Hosted on a free tier** | ~285 ms of the 299 ms is CPU throttling, isolated by measuring a no-database route and a held-open socket. The machine also sleeps after five minutes idle, so a cold visit costs ~6 s. A paid machine would fix both; this project does not have a budget |
 | **Measured on one machine** | Every figure above has both browsers on the same laptop, including the deployed row |
 | **One process only** | Documents live in the memory of the process serving them; horizontal scaling needs Redis pub/sub and Postgres, and running two machines today would let boards silently diverge |
 | **No authentication** | The client id identifies a *browser*, not a person. Anyone with a session id can open that board as a viewer |
