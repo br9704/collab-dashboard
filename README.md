@@ -29,6 +29,8 @@ frontend on Vercel talking to an always-on Node process on Fly.io (London), beca
 collaborative session is a long-lived WebSocket and serverless cannot hold one. See
 [Status](#status) for what the free-trial tier costs you in latency.
 
+Case study: [brunojaamaa.dev/projects/collab-dashboard](https://brunojaamaa.dev/projects/collab-dashboard)
+
 [![CI](https://github.com/br9704/collab-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/br9704/collab-dashboard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node 22+](https://img.shields.io/badge/node-%3E%3D22-informational)
