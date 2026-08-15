@@ -1099,3 +1099,23 @@ these are the amendments:**
   and publishing them may well be intentional, so they were left alone rather than guessed at.
 - The 8 npm advisories (3 high, all `ws` via `socket.io-adapter`) are untouched: the fix is an
   upstream bump, not a local change.
+
+**The second history rewrite, as executed (2026-08-15).** Bruno was asked and chose the
+rewrite over leaving it. A bundle of all refs was taken first (`collab-dashboard-backup-
+6a43c63.bundle`, 2.8 MB, outside the repo) because `git filter-repo` rewrites backup branches
+too — the lesson already learned in Sprint 8.
+
+```
+git filter-repo --invert-paths --path .claude --path .codex --path .cursor --force
+```
+
+Result: **57 commits preserved, one author, working tree byte-identical** — the tree hash is
+`699395b` both before and after, which is the check that matters, since the point was to change
+history without changing the checkout. `git log --all --name-only` now returns no path under
+`.claude/`, `.codex/` or `.cursor/`, and `git grep` over every reachable commit finds no
+`Desktop/hive`. Pushed `b7b7fe4 → 258013e` with `--force-with-lease`.
+
+Worth stating plainly: **every SHA in this file that predates 2026-08-15 refers to the old
+history and no longer resolves.** That is the cost of the fix, it was known before it was
+chosen, and it is the second time this repository has paid it — because the first rewrite
+addressed authorship without noticing that the same pass could have addressed content.
